@@ -13,6 +13,7 @@ export default function AuthScreen({ onAuthenticated }) {
   const [error, setError] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetCodeSent, setResetCodeSent] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,12 +42,25 @@ export default function AuthScreen({ onAuthenticated }) {
     setNotice("");
     try {
       if (mode === "forgot") {
-        const { error: resetError } = await insforge.auth.sendResetPasswordEmail({
-          email: email.trim(),
-          redirectTo: window.location.origin,
-        });
-        if (resetError) throw resetError;
-        setNotice("Revisa tu correo. Te enviamos un enlace para crear una nueva contraseña.");
+        if (!otp) {
+          const { error: resetError } = await insforge.auth.sendResetPasswordEmail({
+            email: email.trim(),
+            redirectTo: window.location.origin,
+          });
+          if (resetError) throw resetError;
+          setResetCodeSent(true);
+          setNotice("Revisa tu correo e ingresa el código de recuperación.");
+        } else {
+          const { data, error: exchangeError } = await insforge.auth.exchangeResetPasswordToken({
+            email: email.trim(),
+            code: otp,
+          });
+          if (exchangeError) throw exchangeError;
+          setResetToken(data?.token || "");
+          setOtp("");
+          setMode("reset");
+          setNotice("Código verificado. Crea tu nueva contraseña.");
+        }
       } else if (mode === "reset") {
         if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
         const { error: resetError } = await insforge.auth.resetPassword({
@@ -149,7 +163,7 @@ export default function AuthScreen({ onAuthenticated }) {
         <p className="auth-subtitle">
           {verificationMethod === "code"
             ? "Escribe el código de 6 dígitos que enviamos a tu correo."
-            : mode === "forgot" ? "Te enviaremos un enlace seguro a tu correo."
+            : mode === "forgot" ? "Te enviaremos un código de recuperación a tu correo."
               : mode === "reset" ? "Usa al menos 8 caracteres para proteger tu cuenta."
                 : "Inicia sesión para guardar tus conversaciones."}
         </p>
@@ -170,9 +184,9 @@ export default function AuthScreen({ onAuthenticated }) {
               required
             />
           </label>
-          {verificationMethod === "code" ? (
+          {verificationMethod === "code" || mode === "forgot" ? (
             <label>
-              Código de verificación
+              {mode === "forgot" ? "Código de recuperación" : "Código de verificación"}
               <input
                 inputMode="numeric"
                 autoComplete="one-time-code"
@@ -180,7 +194,7 @@ export default function AuthScreen({ onAuthenticated }) {
                 onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
                 minLength={6}
                 maxLength={6}
-                required
+                required={mode !== "forgot" || resetCodeSent}
               />
             </label>
           ) : mode !== "forgot" ? (
@@ -217,7 +231,7 @@ export default function AuthScreen({ onAuthenticated }) {
               : verificationMethod === "code"
                 ? "Verificar correo"
                 : mode === "forgot"
-                  ? "Enviar enlace"
+                  ? resetCodeSent ? "Verificar código" : "Enviar código"
                   : mode === "reset"
                     ? "Guardar contraseña"
                     : mode === "signin"
@@ -237,6 +251,14 @@ export default function AuthScreen({ onAuthenticated }) {
           <p className="auth-switch">
             <button type="button" onClick={() => { setMode("forgot"); setError(""); setNotice(""); }}>
               ¿Olvidaste tu contraseña?
+            </button>
+          </p>
+        )}
+        {mode === "forgot" && (
+          <p className="auth-switch">
+            ¿No recibiste el código?{" "}
+            <button type="button" onClick={() => { setOtp(""); setResetCodeSent(false); setNotice(""); setError(""); }} disabled={busy}>
+              Reenviar código
             </button>
           </p>
         )}
