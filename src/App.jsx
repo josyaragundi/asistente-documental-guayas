@@ -372,8 +372,8 @@ export default function App() {
         open={sidebarOpen}
         user={user}
         isAdmin={isAdmin}
-        onNewChat={createChat}
-        onSelectChat={selectChat}
+        onNewChat={() => { setView("chat"); createChat(); }}
+        onSelectChat={(id) => { setView("chat"); selectChat(id); }}
         onClose={() => setSidebarOpen(false)}
         onSignOut={signOut}
         onOpenDocuments={() => setView("documents")}
