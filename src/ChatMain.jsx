@@ -122,6 +122,7 @@ export default function ChatMain({
   function startVoice() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) return setVoiceError("Tu navegador no admite dictado por voz.");
+    setVoiceError("");
     const recognition = new Recognition();
     recognition.lang = "es-EC";
     recognition.interimResults = false;
@@ -129,7 +130,7 @@ export default function ChatMain({
     recognition.onend = () => setListening(false);
     recognition.onerror = () => { setListening(false); setVoiceError("No se pudo usar el micrófono. Revisa el permiso del navegador."); };
     recognition.onresult = (event) => onPromptChange(`${prompt} ${event.results[0][0].transcript}`.trim());
-    recognition.start();
+    try { recognition.start(); } catch { setListening(false); setVoiceError("El dictado no está disponible en este navegador. Prueba Chrome o Edge."); }
   }
 
   return (

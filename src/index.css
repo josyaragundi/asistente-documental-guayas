@@ -1,14 +1,14 @@
 :root {
-  --bg: #f7f7f8;
-  --sidebar: #f0f0f1;
-  --sidebar-hover: #e5e5e7;
-  --main: #ffffff;
+  --bg: #f5faf8;
+  --sidebar: #edf6f2;
+  --sidebar-hover: #dff0e9;
+  --main: #fbfdfc;
   --composer: #ffffff;
   --border: #d8d8dc;
   --text: #202123;
   --muted: #5f6368;
   --dim: #767b85;
-  --user-bubble: #e9e9eb;
+  --user-bubble: #dff3eb;
   --accent: #10a37f;
   --radius: 22px;
   font-family: "Segoe UI", system-ui, sans-serif;
@@ -36,8 +36,8 @@
 :root:not([data-theme="dark"]) .voice-btn.listening { background: #e5e5e7; color: #202123; }
 :root:not([data-theme="dark"]) .chat-search { background: #ffffff; border-color: #d1d1d6; color: #202123; }
 :root:not([data-theme="dark"]) .chat-item { color: #3f4248; }
-:root:not([data-theme="dark"]) .chat-item:hover { background: #e5e5e7; }
-:root:not([data-theme="dark"]) .chat-item.active { background: #dedee2; color: #202123; }
+:root:not([data-theme="dark"]) .chat-item:hover { background: #dff0e9; }
+:root:not([data-theme="dark"]) .chat-item.active { background: #cfe9df; color: #174b3d; }
 :root:not([data-theme="dark"]) .profile.active { background: #e5e5e7; }
 :root:not([data-theme="dark"]) .profile-menu { background: #ffffff; }
 :root:not([data-theme="dark"]) .older-messages button:hover,
