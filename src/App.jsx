@@ -16,6 +16,9 @@ export default function App() {
   const [loadingChats, setLoadingChats] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [deletingDocument, setDeletingDocument] = useState("");
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [notice, setNotice] = useState("");
@@ -73,6 +76,25 @@ export default function App() {
       setLoadingChats(false);
     }
   }, [user]);
+
+  const loadDocuments = useCallback(async () => {
+    if (!insforge || !user || !isAdmin) return;
+    const { data, error: queryError } = await insforge.database
+      .from("documents")
+      .select("source, created_at")
+      .order("created_at", { ascending: false });
+    if (!queryError) {
+      const grouped = new Map();
+      for (const row of data ?? []) {
+        const current = grouped.get(row.source) ?? { source: row.source, chunks: 0, created_at: row.created_at };
+        current.chunks += 1;
+        grouped.set(row.source, current);
+      }
+      setDocuments([...grouped.values()]);
+    }
+  }, [user, isAdmin]);
+
+  useEffect(() => { loadDocuments(); }, [loadDocuments]);
 
   useEffect(() => {
     let mounted = true;
@@ -308,12 +330,25 @@ export default function App() {
       setNotice(
         `${data.source}: PDF procesado (${data.pages ?? "?"} páginas, ${data.chunksInserted} fragmentos). Ya puedes hacer preguntas.`
       );
+      await loadDocuments();
     } catch (uploadError) {
       setError(`No se pudo procesar el PDF: ${uploadError.message}`);
       setNotice("");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function deleteDocument(source) {
+    if (!insforge || !source || deletingDocument) return;
+    if (!window.confirm(`¿Eliminar "${source}" y todos sus fragmentos?`)) return;
+    setDeletingDocument(source);
+    setError("");
+    const { error: deleteError } = await insforge.database.from("documents").delete().eq("source", source);
+    if (deleteError) setError(`No se pudo eliminar el documento: ${deleteError.message}`);
+    else setNotice(`Documento eliminado: ${source}`);
+    await loadDocuments();
+    setDeletingDocument("");
   }
 
   async function signOut() {
@@ -359,6 +394,11 @@ export default function App() {
         onPromptChange={setPrompt}
         onSubmit={sendMessage}
         onUploadPdf={uploadPdf}
+        documents={documents}
+        documentsOpen={documentsOpen}
+        onToggleDocuments={() => setDocumentsOpen((open) => !open)}
+        onDeleteDocument={deleteDocument}
+        deletingDocument={deletingDocument}
         onOpenSidebar={() => setSidebarOpen(true)}
       />
     </div>

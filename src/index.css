@@ -227,7 +227,13 @@ textarea {
   padding: 8px 0 24px;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4a4a transparent;
 }
+
+.thread::-webkit-scrollbar { width: 8px; }
+.thread::-webkit-scrollbar-track { background: transparent; }
+.thread::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 99px; }
 
 .empty {
   height: 100%;
@@ -340,6 +346,49 @@ textarea {
   border-radius: var(--radius);
   padding: 8px 8px 8px 6px;
 }
+
+.manage-documents {
+  border: 0;
+  border-radius: 14px;
+  padding: 0 10px;
+  height: 34px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.manage-documents:hover { background: #3a3a3a; color: var(--text); }
+
+.documents-panel {
+  position: absolute;
+  z-index: 5;
+  top: 58px;
+  right: 18px;
+  width: min(440px, calc(100% - 36px));
+  max-height: min(62vh, 520px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid #464646;
+  border-radius: 16px;
+  background: #292929;
+  box-shadow: 0 18px 45px rgba(0,0,0,.35);
+}
+
+.documents-heading, .document-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.documents-heading { margin-bottom: 12px; }
+.documents-heading strong, .document-info strong { display: block; font-size: 14px; }
+.documents-heading small, .document-info small { display: block; margin-top: 4px; color: var(--dim); font-size: 12px; }
+.panel-close { border: 0; background: transparent; color: var(--muted); font-size: 24px; cursor: pointer; line-height: 1; }
+.documents-list { display: grid; gap: 8px; }
+.document-row { padding: 10px; border-radius: 10px; background: #333; }
+.document-info { min-width: 0; }
+.document-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delete-document { border: 1px solid #6a3f3f; border-radius: 8px; padding: 6px 9px; background: transparent; color: #ffaaaa; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.delete-document:hover { background: #542f2f; }
+.delete-document:disabled { opacity: .6; cursor: wait; }
+.documents-empty { color: var(--muted); font-size: 13px; }
 
 .composer textarea {
   flex: 1;

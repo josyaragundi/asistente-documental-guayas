@@ -10,6 +10,11 @@ export default function ChatMain({
   onPromptChange,
   onSubmit,
   onUploadPdf,
+  documents,
+  documentsOpen,
+  onToggleDocuments,
+  onDeleteDocument,
+  deletingDocument,
   uploading,
   isAdmin,
   user,
@@ -119,6 +124,27 @@ export default function ChatMain({
         <span className="topbar-spacer" aria-hidden="true" />
       </header>
 
+      {isAdmin && documentsOpen && (
+        <aside className="documents-panel" aria-label="Documentos cargados">
+          <div className="documents-heading">
+            <div><strong>Documentos cargados</strong><small>Solo visibles para administradores</small></div>
+            <button type="button" className="panel-close" onClick={onToggleDocuments} aria-label="Cerrar">×</button>
+          </div>
+          {documents.length === 0 ? <p className="documents-empty">Todavía no hay documentos cargados.</p> : (
+            <div className="documents-list">
+              {documents.map((document) => (
+                <div className="document-row" key={document.source}>
+                  <div className="document-info"><strong title={document.source}>{document.source}</strong><small>{document.chunks} fragmentos</small></div>
+                  <button type="button" className="delete-document" onClick={() => onDeleteDocument(document.source)} disabled={deletingDocument === document.source}>
+                    {deletingDocument === document.source ? "…" : "Eliminar"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+      )}
+
       <section className="thread" ref={threadRef} onScroll={handleThreadScroll}>
         {hasOlderMessages && (
           <div className="older-messages">
@@ -182,6 +208,9 @@ export default function ChatMain({
             onClick={() => fileInputRef.current?.click()}
           >
             <PlusIcon />
+          </button>}
+          {isAdmin && <button className="manage-documents" type="button" onClick={onToggleDocuments} title="Administrar documentos">
+            {documentsOpen ? "Cerrar documentos" : "Documentos"}
           </button>}
           <textarea
             ref={textareaRef}
