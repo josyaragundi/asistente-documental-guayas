@@ -224,38 +224,7 @@ export default function App() {
     setSidebarOpen(false);
   }
 
-  async function renameChat(chat, nextTitle) {
-    const title = nextTitle?.trim();
-    if (!title || title === chat.title) return;
-    const { error: updateError } = await insforge.database.from("conversations").update({ title }).eq("id", chat.id);
-    if (updateError) return setError(`No se pudo renombrar el chat: ${updateError.message}`);
-    setChats((current) => current.map((item) => item.id === chat.id ? { ...item, title } : item));
-  }
 
-  async function editMessage(message) {
-    const text = message.text?.trim();
-    if (!text || text === message.text || !activeChat) return;
-    const { error: updateError } = await insforge.database.from("messages").update({ content: text }).eq("id", message.id);
-    if (updateError) return setError(`No se pudo editar la pregunta: ${updateError.message}`);
-    setChats((current) => current.map((chat) => chat.id === activeChat.id ? { ...chat, messages: chat.messages.filter((item) => item.created_at <= message.created_at).map((item) => item.id === message.id ? { ...item, text } : item) } : chat));
-    setError("");
-    setNotice("Buscando una nueva respuesta…");
-    try {
-      const { data: ragResult, error: ragError } = await insforge.functions.invoke("ask", { body: { question: text } });
-      if (ragError) throw ragError;
-      const citations = (ragResult?.sources ?? []).map((item) => item.score == null ? `- ${item.source}` : `- ${item.source} (${item.score})`).join("\n");
-      const assistantText = citations ? `${ragResult.answer}\n\nFuentes:\n${citations}` : ragResult?.answer || "no tengo esa información en mis documentos";
-      const { error: deleteError } = await insforge.database.from("messages").delete().eq("conversation_id", activeChat.id).gt("created_at", message.created_at);
-      if (deleteError) console.error("Could not trim messages after edited question", deleteError);
-      const { data: assistantMessage, error: assistantError } = await insforge.database.from("messages").insert([{ conversation_id: activeChat.id, role: "assistant", content: assistantText }]).select("id, role, content, created_at").single();
-      if (assistantError) throw assistantError;
-      setChats((current) => current.map((chat) => chat.id === activeChat.id ? { ...chat, messages: [...chat.messages, { id: assistantMessage.id, role: assistantMessage.role, text: assistantMessage.content, created_at: assistantMessage.created_at }] } : chat));
-      setNotice("");
-    } catch (askError) {
-      setNotice("");
-      setError(`No se pudo generar la nueva respuesta: ${askError.message}`);
-    }
-  }
 
   async function sendMessage() {
     const text = prompt.trim();
@@ -410,7 +379,6 @@ export default function App() {
         isAdmin={isAdmin}
         onNewChat={() => { setView("chat"); createChat(); }}
         onSelectChat={(id) => { setView("chat"); selectChat(id); }}
-        onRenameChat={renameChat}
         theme={theme}
         onToggleTheme={() => setTheme((current) => current === "light" ? "dark" : "light")}
         onClose={() => setSidebarOpen(false)}
@@ -449,7 +417,6 @@ export default function App() {
         onDeleteDocument={deleteDocument}
         deletingDocument={deletingDocument}
         onOpenSidebar={() => { setSidebarHidden((hidden) => !hidden); setSidebarOpen((open) => !open); }}
-        onEditMessage={editMessage}
       />}
     </div>
   );

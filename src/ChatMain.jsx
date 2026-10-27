@@ -22,7 +22,6 @@ export default function ChatMain({
   loadingOlderMessages,
   onLoadOlderMessages,
   onOpenSidebar,
-  onEditMessage,
 }) {
   const displayName = user?.profile?.name || user?.name || user?.email?.split("@")[0] || "";
   const initial = displayName.trim().charAt(0).toLocaleUpperCase("es") || "?";
@@ -37,9 +36,6 @@ export default function ChatMain({
   const [copiedId, setCopiedId] = useState("");
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
-  const [editingId, setEditingId] = useState("");
-  const [editingText, setEditingText] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
   const messages = chat?.messages ?? [];
   const latestMessage = messages[messages.length - 1];
 
@@ -136,7 +132,6 @@ export default function ChatMain({
     try { recognition.start(); } catch { setListening(false); setVoiceError("El dictado no está disponible en este navegador. Prueba Chrome o Edge."); }
   }
 
-  function beginEdit(message) { setEditingId(message.id); setEditingText(message.text); }
 
   return (
     <main className="main">
@@ -193,10 +188,8 @@ export default function ChatMain({
         ) : (
           messages.map((message, index) => (
             <article className={`message ${message.role}`} key={message.id ?? `${message.role}-${index}`}>
-              {message.role === "assistant" ? (
-                <span className="avatar bot">{initial}</span>
-              ) : null}
-              <div className="message-body">{editingId === message.id ? <div className="inline-editor"><textarea value={editingText} onChange={(event) => setEditingText(event.target.value)} autoFocus /><div><button type="button" disabled={savingEdit || !editingText.trim()} onClick={async () => { setSavingEdit(true); await onEditMessage({ ...message, text: editingText }); setSavingEdit(false); setEditingId(""); }}>{savingEdit ? "Buscando…" : "Guardar"}</button><button type="button" disabled={savingEdit} onClick={() => setEditingId("")}>Cancelar</button></div></div> : <div className="bubble">{message.text}</div>}{message.role === "assistant" ? <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button> : <button className="message-action" type="button" onClick={() => beginEdit(message)}>Editar</button>}</div>
+              {message.role === "assistant" ? <span className="avatar bot">✦</span> : <span className="avatar user-avatar">{initial}</span>}
+              <div className="message-body"><div className="bubble">{message.text}</div>{message.role === "assistant" && <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button>}</div>
             </article>
           ))
         )}

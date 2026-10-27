@@ -12,14 +12,11 @@ export default function Sidebar({
   onClose,
   onSignOut,
   onOpenDocuments,
-  onRenameChat,
   theme,
   onToggleTheme,
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [renamingId, setRenamingId] = useState("");
-  const [renamingTitle, setRenamingTitle] = useState("");
   const displayName = user?.profile?.name || user?.name || user?.email?.split("@")[0] || "Cuenta";
   const initial = displayName.trim().charAt(0).toLocaleUpperCase("es") || "?";
   return (
@@ -49,9 +46,8 @@ export default function Sidebar({
             className={`chat-item${chat.id === activeId ? " active" : ""}`}
             type="button"
             onClick={() => onSelectChat(chat.id)}
-            onDoubleClick={() => { setRenamingId(chat.id); setRenamingTitle(chat.title); }}
           >
-            {renamingId === chat.id ? <input className="chat-rename-input" autoFocus value={renamingTitle} onChange={(event) => setRenamingTitle(event.target.value)} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Enter") { onRenameChat(chat, renamingTitle); setRenamingId(""); } if (event.key === "Escape") setRenamingId(""); }} onBlur={() => { onRenameChat(chat, renamingTitle); setRenamingId(""); }} /> : <span>{chat.title}</span>}
+            <span>{chat.title}</span>
           </button>
         ))}
       </nav>
