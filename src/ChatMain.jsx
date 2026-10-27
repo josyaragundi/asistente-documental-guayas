@@ -39,6 +39,7 @@ export default function ChatMain({
   const [voiceError, setVoiceError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [editingText, setEditingText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const messages = chat?.messages ?? [];
   const latestMessage = messages[messages.length - 1];
 
@@ -195,7 +196,7 @@ export default function ChatMain({
               {message.role === "assistant" ? (
                 <span className="avatar bot">{initial}</span>
               ) : null}
-              <div className="message-body">{editingId === message.id ? <div className="inline-editor"><textarea value={editingText} onChange={(event) => setEditingText(event.target.value)} autoFocus /><div><button type="button" onClick={() => { onEditMessage({ ...message, text: editingText }); setEditingId(""); }}>Guardar</button><button type="button" onClick={() => setEditingId("")}>Cancelar</button></div></div> : <div className="bubble">{message.text}</div>}{message.role === "assistant" ? <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button> : <button className="message-action" type="button" onClick={() => beginEdit(message)}>Editar</button>}</div>
+              <div className="message-body">{editingId === message.id ? <div className="inline-editor"><textarea value={editingText} onChange={(event) => setEditingText(event.target.value)} autoFocus /><div><button type="button" disabled={savingEdit || !editingText.trim()} onClick={async () => { setSavingEdit(true); await onEditMessage({ ...message, text: editingText }); setSavingEdit(false); setEditingId(""); }}>{savingEdit ? "Buscando…" : "Guardar"}</button><button type="button" disabled={savingEdit} onClick={() => setEditingId("")}>Cancelar</button></div></div> : <div className="bubble">{message.text}</div>}{message.role === "assistant" ? <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button> : <button className="message-action" type="button" onClick={() => beginEdit(message)}>Editar</button>}</div>
             </article>
           ))
         )}

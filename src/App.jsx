@@ -237,9 +237,7 @@ export default function App() {
     if (!text || text === message.text || !activeChat) return;
     const { error: updateError } = await insforge.database.from("messages").update({ content: text }).eq("id", message.id);
     if (updateError) return setError(`No se pudo editar la pregunta: ${updateError.message}`);
-    const { error: deleteError } = await insforge.database.from("messages").delete().eq("conversation_id", activeChat.id).gt("created_at", message.created_at);
-    if (deleteError) return setError(`La pregunta se actualizó, pero no se pudo reiniciar la respuesta: ${deleteError.message}`);
-    setChats((current) => current.map((chat) => chat.id === activeChat.id ? { ...chat, messages: chat.messages.filter((item) => item.id === message.id).map((item) => ({ ...item, text })) } : chat));
+    setChats((current) => current.map((chat) => chat.id === activeChat.id ? { ...chat, messages: chat.messages.filter((item) => item.created_at <= message.created_at).map((item) => item.id === message.id ? { ...item, text } : item) } : chat));
     setError("");
     setNotice("Buscando una nueva respuesta…");
     try {
@@ -247,6 +245,8 @@ export default function App() {
       if (ragError) throw ragError;
       const citations = (ragResult?.sources ?? []).map((item) => item.score == null ? `- ${item.source}` : `- ${item.source} (${item.score})`).join("\n");
       const assistantText = citations ? `${ragResult.answer}\n\nFuentes:\n${citations}` : ragResult?.answer || "no tengo esa información en mis documentos";
+      const { error: deleteError } = await insforge.database.from("messages").delete().eq("conversation_id", activeChat.id).gt("created_at", message.created_at);
+      if (deleteError) console.error("Could not trim messages after edited question", deleteError);
       const { data: assistantMessage, error: assistantError } = await insforge.database.from("messages").insert([{ conversation_id: activeChat.id, role: "assistant", content: assistantText }]).select("id, role, content, created_at").single();
       if (assistantError) throw assistantError;
       setChats((current) => current.map((chat) => chat.id === activeChat.id ? { ...chat, messages: [...chat.messages, { id: assistantMessage.id, role: assistantMessage.role, text: assistantMessage.content, created_at: assistantMessage.created_at }] } : chat));
