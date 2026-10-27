@@ -326,13 +326,13 @@ textarea {
   font-size: clamp(28px, 4vw, 38px);
   font-weight: 650;
   letter-spacing: -0.04em;
-  background: linear-gradient(100deg, #202123 15%, #557d72 90%);
+  background: linear-gradient(100deg, #2563eb 10%, #0f766e 55%, #d97706 100%);
   color: transparent;
   background-clip: text;
 }
 
 :root[data-theme="dark"] .welcome-copy span {
-  background: linear-gradient(100deg, #f4f4f4 20%, #b9d8ce 80%);
+  background: linear-gradient(100deg, #93c5fd 10%, #6ee7b7 55%, #fcd34d 100%);
 }
 
 .welcome-copy small {
