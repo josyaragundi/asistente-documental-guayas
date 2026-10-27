@@ -15,6 +15,21 @@
 }
 
 :root[data-theme="dark"] { --bg:#212121; --sidebar:#171717; --sidebar-hover:#212121; --main:#212121; --composer:#303030; --border:#3e3e3e; --text:#ececec; --muted:#b4b4b4; --dim:#8f8f8f; --user-bubble:#2f2f2f; }
+:root:not([data-theme="dark"]) .icon-btn:hover,
+:root:not([data-theme="dark"]) .chat-item.active,
+:root:not([data-theme="dark"]) .profile.active { background: #e5e5e7; }
+:root:not([data-theme="dark"]) .profile-menu { background: #ffffff; border-color: #d5d5d8; box-shadow: 0 12px 30px rgba(0,0,0,.12); }
+:root:not([data-theme="dark"]) .profile-menu button:hover { background: #f0f0f2; }
+:root:not([data-theme="dark"]) .composer { border-color: #c9c9ce; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+:root:not([data-theme="dark"]) .documents-panel,
+:root:not([data-theme="dark"]) .admin-documents-card { background: #ffffff; border-color: #d7d7dc; box-shadow: 0 18px 45px rgba(0,0,0,.1); }
+:root:not([data-theme="dark"]) .document-row { background: #f4f4f6; }
+:root:not([data-theme="dark"]) .auth-card { background: #ffffff; border-color: #d8d8dc; box-shadow: 0 24px 80px rgba(0,0,0,.1); }
+:root:not([data-theme="dark"]) .auth-form input { background: #fafafa; border-color: #c9c9ce; color: #202123; }
+:root:not([data-theme="dark"]) .older-messages button,
+:root:not([data-theme="dark"]) .jump-to-latest { background: #ffffff; border-color: #c9c9ce; color: #454545; }
+:root:not([data-theme="dark"]) .voice-btn:hover,
+:root:not([data-theme="dark"]) .voice-btn.listening { background: #e5e5e7; color: #202123; }
 
 * {
   box-sizing: border-box;
