@@ -37,9 +37,9 @@
   background: none;
   -webkit-background-clip: initial;
   background-clip: initial;
-  color: #d1fae5;
-  -webkit-text-fill-color: #d1fae5;
-  text-shadow: 0 1px 18px rgba(167, 243, 208, .16);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  text-shadow: none;
 }
 :root:not([data-theme="dark"]) .icon-btn:hover,
 :root:not([data-theme="dark"]) .chat-item.active,
