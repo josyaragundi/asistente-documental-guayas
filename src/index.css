@@ -33,6 +33,13 @@
 :root[data-theme="dark"] .auth-card { background:#191919; border-color:#383838; }
 :root[data-theme="dark"] .auth-form input { background:#242424; border-color:#454545; color:#ececec; }
 :root[data-theme="dark"] .auth-form label { color:#d5d5d5; }
+:root[data-theme="dark"] .welcome-copy span {
+  background: linear-gradient(100deg, #ffffff 0%, #a7f3d0 52%, #fcd34d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 18px rgba(167, 243, 208, .16);
+}
 :root:not([data-theme="dark"]) .icon-btn:hover,
 :root:not([data-theme="dark"]) .chat-item.active,
 :root:not([data-theme="dark"]) .profile.active { background: #e5e5e7; }

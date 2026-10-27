@@ -183,7 +183,6 @@ export default function ChatMain({
               <span>Hola, {displayName}</span>
               <small>¿Qué te gustaría consultar hoy?</small>
             </div>
-            {loading && <small>Cargando conversaciones…</small>}
           </div>
         ) : (
           messages.map((message, index) => (
