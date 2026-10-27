@@ -209,9 +209,6 @@ export default function ChatMain({
           >
             <PlusIcon />
           </button>}
-          {isAdmin && <button className="manage-documents" type="button" onClick={onToggleDocuments} title="Administrar documentos">
-            {documentsOpen ? "Cerrar documentos" : "Documentos"}
-          </button>}
           <textarea
             ref={textareaRef}
             rows="1"

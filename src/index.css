@@ -86,6 +86,8 @@ textarea {
   background: var(--sidebar-hover);
 }
 
+.profile.active { background: #2f2f2f; }
+
 .new-chat svg,
 .icon-btn svg,
 .send svg,
@@ -131,9 +133,37 @@ textarea {
 }
 
 .sidebar-bottom {
+  position: relative;
   padding: 10px;
   border-top: 1px solid #2a2a2a;
 }
+
+.profile-menu {
+  position: absolute;
+  right: 10px;
+  bottom: 68px;
+  left: 10px;
+  display: grid;
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid #414141;
+  border-radius: 12px;
+  background: #292929;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+}
+
+.profile-menu button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.profile-menu button:hover { background: #3a3a3a; }
 
 .profile {
   border-radius: 12px;

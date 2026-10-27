@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MenuIcon, PlusIcon } from "./icons.jsx";
 
 export default function Sidebar({
@@ -10,7 +11,9 @@ export default function Sidebar({
   onSelectChat,
   onClose,
   onSignOut,
+  onOpenDocuments,
 }) {
+  const [profileOpen, setProfileOpen] = useState(false);
   const displayName = user?.profile?.name || user?.name || user?.email?.split("@")[0] || "Cuenta";
   const initial = displayName.trim().charAt(0).toLocaleUpperCase("es") || "?";
   return (
@@ -46,13 +49,17 @@ export default function Sidebar({
       </nav>
 
       <div className="sidebar-bottom">
-        <button className="profile" type="button" onClick={onSignOut} title="Cerrar sesión">
+        <button className={`profile${profileOpen ? " active" : ""}`} type="button" onClick={() => setProfileOpen((open) => !open)} title="Abrir perfil">
           <span className="avatar">{initial}</span>
           <span className="profile-meta">
             <strong>{user?.profile?.name || user?.email || "Cuenta"}</strong>
-            <small>{isAdmin ? "Administradora · Cerrar sesión" : "Cerrar sesión"}</small>
+            <small>{isAdmin ? "Administradora" : "Cuenta"}</small>
           </span>
         </button>
+        {profileOpen && <div className="profile-menu">
+          {isAdmin && <button type="button" onClick={() => { setProfileOpen(false); onOpenDocuments(); }}>Administrar documentos</button>}
+          <button type="button" onClick={onSignOut}>Cerrar sesión</button>
+        </div>}
       </div>
     </aside>
   );

@@ -376,6 +376,7 @@ export default function App() {
         onSelectChat={selectChat}
         onClose={() => setSidebarOpen(false)}
         onSignOut={signOut}
+        onOpenDocuments={() => setView("documents")}
       />
       <div
         className={`overlay${sidebarOpen ? " show" : ""}`}

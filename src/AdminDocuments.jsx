@@ -11,7 +11,6 @@ export default function AdminDocuments({ documents, uploading, deletingDocument,
       </header>
       <section className="admin-content">
         <div className="admin-intro">
-          <span className="admin-kicker">Panel de administradora</span>
           <h1>Archivos del asistente</h1>
           <p>Sube documentos PDF para incorporarlos a la base de conocimiento o elimina los que ya no deban utilizarse.</p>
           <input ref={inputRef} hidden type="file" accept="application/pdf,.pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onUploadPdf(file); }} />
