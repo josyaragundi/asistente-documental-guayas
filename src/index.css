@@ -113,6 +113,7 @@ textarea {
   text-align: left;
 }
 .chat-search { width: calc(100% - 20px); margin: 3px 10px 8px; padding: 8px 10px; border: 1px solid #343434; border-radius: 9px; background: #242424; color: var(--text); outline: none; font-size: 12px; }
+.chat-rename-input { width: 100%; min-width: 0; border: 1px solid #8fcab7; border-radius: 6px; padding: 4px 6px; background: var(--main); color: var(--text); outline: none; font-size: 13px; }
 
 .new-chat {
   height: 40px;

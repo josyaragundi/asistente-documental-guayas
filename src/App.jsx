@@ -224,8 +224,8 @@ export default function App() {
     setSidebarOpen(false);
   }
 
-  async function renameChat(chat) {
-    const title = window.prompt("Nombre de la conversación", chat.title)?.trim();
+  async function renameChat(chat, nextTitle) {
+    const title = nextTitle?.trim();
     if (!title || title === chat.title) return;
     const { error: updateError } = await insforge.database.from("conversations").update({ title }).eq("id", chat.id);
     if (updateError) return setError(`No se pudo renombrar el chat: ${updateError.message}`);
