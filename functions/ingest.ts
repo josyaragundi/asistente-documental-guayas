@@ -1,15 +1,16 @@
 import { createClient } from "npm:@insforge/sdk";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const corsHeaders = (req: Request) => ({
+  "Access-Control-Allow-Origin": ["https://asistente-documental-guayas.pages.dev", "http://localhost:5174"].includes(req.headers.get("Origin") ?? "") ? req.headers.get("Origin")! : "https://asistente-documental-guayas.pages.dev",
+  "Vary": "Origin",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Content-Type": "application/json; charset=utf-8",
-};
+});
 const embeddingModel = "@cf/baai/bge-m3";
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders });
+function jsonResponse(body: unknown, status = 200, req?: Request): Response {
+  return new Response(JSON.stringify(body), { status, headers: corsHeaders(req ?? new Request("https://localhost")) });
 }
 
 function chunkText(text: string, chunkWords = 380, overlapWords = 50): string[] {
@@ -103,6 +104,7 @@ export default async function ingest(req: Request): Promise<Response> {
   } catch (error) {
     console.error("RAG ingest failed:", error);
     const detail = error instanceof Error ? error.message : "Unexpected server error";
-    return jsonResponse({ error: "Ingestion failed", detail }, 502);
+    console.error("RAG ingest detail:", detail);
+    return jsonResponse({ error: "Ingestion failed" }, 502);
   }
 }

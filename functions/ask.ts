@@ -1,16 +1,17 @@
 import { createClient } from "npm:@insforge/sdk";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const corsHeaders = (req: Request) => ({
+  "Access-Control-Allow-Origin": ["https://asistente-documental-guayas.pages.dev", "http://localhost:5174"].includes(req.headers.get("Origin") ?? "") ? req.headers.get("Origin")! : "https://asistente-documental-guayas.pages.dev",
+  "Vary": "Origin",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Content-Type": "application/json; charset=utf-8",
-};
+});
 const embeddingModel = "@cf/baai/bge-m3";
 const noInformation = "no tengo esa información en mis documentos";
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders });
+function jsonResponse(body: unknown, status = 200, req?: Request): Response {
+  return new Response(JSON.stringify(body), { status, headers: corsHeaders(req ?? new Request("https://localhost")) });
 }
 
 function appendWithoutOverlap(current: string, next: string, maxOverlap = 80): string {
@@ -54,7 +55,7 @@ export default async function ask(req: Request): Promise<Response> {
   }
   const question = typeof body.question === "string" ? body.question.trim() : "";
   if (!question) return jsonResponse({ error: "question is required" }, 400);
-  if (question.length > 8_000) return jsonResponse({ error: "question exceeds the 8,000 character limit" }, 413);
+  if (question.length > 2_000) return jsonResponse({ error: "question exceeds the 2,000 character limit" }, 413);
 
   try {
     const embeddingResponse = await fetch(aiUrl, {
@@ -183,6 +184,7 @@ export default async function ask(req: Request): Promise<Response> {
   } catch (error) {
     console.error("RAG ask failed:", error);
     const detail = error instanceof Error ? error.message : "Unexpected server error";
-    return jsonResponse({ error: "Question answering failed", detail }, 502);
+    console.error("RAG ask detail:", detail);
+    return jsonResponse({ error: "Question answering failed" }, 502);
   }
 }

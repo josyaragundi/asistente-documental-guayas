@@ -1,15 +1,16 @@
 import pdfParse from "npm:pdf-parse@1.1.1";
 import { createClient } from "npm:@insforge/sdk";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const corsHeaders = (req: Request) => ({
+  "Access-Control-Allow-Origin": ["https://asistente-documental-guayas.pages.dev", "http://localhost:5174"].includes(req.headers.get("Origin") ?? "") ? req.headers.get("Origin")! : "https://asistente-documental-guayas.pages.dev",
+  "Vary": "Origin",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Content-Type": "application/json; charset=utf-8",
-};
+});
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders });
+function jsonResponse(body: unknown, status = 200, req?: Request): Response {
+  return new Response(JSON.stringify(body), { status, headers: corsHeaders(req ?? new Request("https://localhost")) });
 }
 
 function splitText(text: string, maxWords = 8_000, overlapWords = 120): string[] {
@@ -87,6 +88,7 @@ export default async function ingestPdf(req: Request): Promise<Response> {
   } catch (error) {
     console.error("PDF ingestion failed:", error);
     const detail = error instanceof Error ? error.message : "Unexpected server error";
-    return jsonResponse({ error: "PDF ingestion failed", detail }, 502);
+    console.error("PDF ingestion detail:", detail);
+    return jsonResponse({ error: "PDF ingestion failed" }, 502);
   }
 }
