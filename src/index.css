@@ -15,6 +15,24 @@
 }
 
 :root[data-theme="dark"] { --bg:#212121; --sidebar:#171717; --sidebar-hover:#212121; --main:#212121; --composer:#303030; --border:#3e3e3e; --text:#ececec; --muted:#b4b4b4; --dim:#8f8f8f; --user-bubble:#2f2f2f; }
+:root[data-theme="dark"] .chat-search { background:#242424; border-color:#454545; color:#ececec; }
+:root[data-theme="dark"] .chat-item { color:#d9d9d9; }
+:root[data-theme="dark"] .chat-item.active,
+:root[data-theme="dark"] .profile.active { background:#2f2f2f; }
+:root[data-theme="dark"] .profile-menu { background:#292929; border-color:#414141; }
+:root[data-theme="dark"] .profile-menu button:hover { background:#3a3a3a; }
+:root[data-theme="dark"] .composer { background:#303030; border-color:#444; }
+:root[data-theme="dark"] .send { background:#fff; color:#000; }
+:root[data-theme="dark"] .send:disabled { background:#676767; color:#2f2f2f; }
+:root[data-theme="dark"] .older-messages button,
+:root[data-theme="dark"] .jump-to-latest { background:#282828; border-color:#454545; color:#d7d7d7; }
+:root[data-theme="dark"] .documents-panel,
+:root[data-theme="dark"] .admin-documents-card { background:#292929; border-color:#464646; }
+:root[data-theme="dark"] .document-row { background:#333; }
+:root[data-theme="dark"] .upload-primary { background:#f4f4f4; color:#171717; }
+:root[data-theme="dark"] .auth-card { background:#191919; border-color:#383838; }
+:root[data-theme="dark"] .auth-form input { background:#242424; border-color:#454545; color:#ececec; }
+:root[data-theme="dark"] .auth-form label { color:#d5d5d5; }
 :root:not([data-theme="dark"]) .icon-btn:hover,
 :root:not([data-theme="dark"]) .chat-item.active,
 :root:not([data-theme="dark"]) .profile.active { background: #e5e5e7; }
