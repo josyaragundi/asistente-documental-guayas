@@ -1,0 +1,28 @@
+node_modules
+dist
+.DS_Store
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf
+
+.env
+.env.local
+.env.*.local
+.npm-cache
+
+# Private database export; never publish user conversations or document embeddings
+backup-origin.sql
+
+examples/__pycache__/
