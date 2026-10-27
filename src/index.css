@@ -1,18 +1,20 @@
 :root {
-  --bg: #212121;
-  --sidebar: #171717;
-  --sidebar-hover: #212121;
-  --main: #212121;
-  --composer: #303030;
-  --border: #3e3e3e;
-  --text: #ececec;
-  --muted: #b4b4b4;
-  --dim: #8f8f8f;
-  --user-bubble: #2f2f2f;
+  --bg: #f7f7f8;
+  --sidebar: #f0f0f1;
+  --sidebar-hover: #e5e5e7;
+  --main: #ffffff;
+  --composer: #ffffff;
+  --border: #d8d8dc;
+  --text: #202123;
+  --muted: #5f6368;
+  --dim: #767b85;
+  --user-bubble: #e9e9eb;
   --accent: #10a37f;
   --radius: 22px;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
+
+:root[data-theme="dark"] { --bg:#212121; --sidebar:#171717; --sidebar-hover:#212121; --main:#212121; --composer:#303030; --border:#3e3e3e; --text:#ececec; --muted:#b4b4b4; --dim:#8f8f8f; --user-bubble:#2f2f2f; }
 
 * {
   box-sizing: border-box;
@@ -318,6 +320,7 @@ textarea {
 .message-body .bubble { max-width: none; }
 .message-action { margin: 5px 0 0 4px; border: 0; background: transparent; color: var(--dim); cursor: pointer; font-size: 11px; opacity: 0; }
 .message.assistant:hover .message-action, .message-action:focus { opacity: 1; }
+.message.user:hover .message-action { opacity: 1; }
 
 .message.user .bubble {
   background: var(--user-bubble);
@@ -454,6 +457,7 @@ textarea {
 }
 .voice-btn { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
 .voice-btn:hover, .voice-btn.listening { background: #444; color: #fff; }
+.voice-error { margin-top: 7px; color: #b54747; text-align: center; font-size: 12px; }
 
 .send {
   width: 36px;

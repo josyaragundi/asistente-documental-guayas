@@ -22,6 +22,7 @@ export default function ChatMain({
   loadingOlderMessages,
   onLoadOlderMessages,
   onOpenSidebar,
+  onEditMessage,
 }) {
   const displayName = user?.profile?.name || user?.name || user?.email?.split("@")[0] || "";
   const initial = displayName.trim().charAt(0).toLocaleUpperCase("es") || "?";
@@ -35,6 +36,7 @@ export default function ChatMain({
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [copiedId, setCopiedId] = useState("");
   const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
   const messages = chat?.messages ?? [];
   const latestMessage = messages[messages.length - 1];
 
@@ -119,12 +121,13 @@ export default function ChatMain({
 
   function startVoice() {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Recognition) return;
+    if (!Recognition) return setVoiceError("Tu navegador no admite dictado por voz.");
     const recognition = new Recognition();
     recognition.lang = "es-EC";
     recognition.interimResults = false;
     recognition.onstart = () => setListening(true);
     recognition.onend = () => setListening(false);
+    recognition.onerror = () => { setListening(false); setVoiceError("No se pudo usar el micrófono. Revisa el permiso del navegador."); };
     recognition.onresult = (event) => onPromptChange(`${prompt} ${event.results[0][0].transcript}`.trim());
     recognition.start();
   }
@@ -187,7 +190,7 @@ export default function ChatMain({
               {message.role === "assistant" ? (
                 <span className="avatar bot">{initial}</span>
               ) : null}
-              <div className="message-body"><div className="bubble">{message.text}</div>{message.role === "assistant" && <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button>}</div>
+              <div className="message-body"><div className="bubble">{message.text}</div>{message.role === "assistant" ? <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button> : <button className="message-action" type="button" onClick={() => onEditMessage(message)}>Editar</button>}</div>
             </article>
           ))
         )}
@@ -248,6 +251,7 @@ export default function ChatMain({
             <SendIcon />
           </button>
         </form>
+        {voiceError && <p className="voice-error">{voiceError}</p>}
         <p className="disclaimer">
           Las respuestas se basan en tus documentos y muestran sus fuentes.
         </p>

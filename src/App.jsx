@@ -21,6 +21,8 @@ export default function App() {
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState("");
   const [view, setView] = useState("chat");
+  const [theme, setTheme] = useState(() => localStorage.getItem("chat-theme") || "light");
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("chat-theme", theme); }, [theme]);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [notice, setNotice] = useState("");
@@ -229,6 +231,14 @@ export default function App() {
     setChats((current) => current.map((item) => item.id === chat.id ? { ...item, title } : item));
   }
 
+  async function editMessage(message) {
+    const text = window.prompt("Editar pregunta", message.text)?.trim();
+    if (!text || text === message.text || !activeChat) return;
+    const { error: updateError } = await insforge.database.from("messages").update({ content: text }).eq("id", message.id);
+    if (updateError) return setError(`No se pudo editar la pregunta: ${updateError.message}`);
+    setChats((current) => current.map((chat) => chat.id === activeChat.id ? { ...chat, messages: chat.messages.map((item) => item.id === message.id ? { ...item, text } : item) } : chat));
+  }
+
   async function sendMessage() {
     const text = prompt.trim();
     if (!text || !insforge || !user) return;
@@ -383,6 +393,8 @@ export default function App() {
         onNewChat={() => { setView("chat"); createChat(); }}
         onSelectChat={(id) => { setView("chat"); selectChat(id); }}
         onRenameChat={renameChat}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => current === "light" ? "dark" : "light")}
         onClose={() => setSidebarOpen(false)}
         onSignOut={signOut}
         onOpenDocuments={() => setView("documents")}
@@ -419,6 +431,7 @@ export default function App() {
         onDeleteDocument={deleteDocument}
         deletingDocument={deletingDocument}
         onOpenSidebar={() => setSidebarOpen(true)}
+        onEditMessage={editMessage}
       />}
     </div>
   );

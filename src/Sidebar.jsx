@@ -13,6 +13,8 @@ export default function Sidebar({
   onSignOut,
   onOpenDocuments,
   onRenameChat,
+  theme,
+  onToggleTheme,
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -62,6 +64,7 @@ export default function Sidebar({
         </button>
         {profileOpen && <div className="profile-menu">
           {isAdmin && <button type="button" onClick={() => { setProfileOpen(false); onOpenDocuments(); }}>Administrar documentos</button>}
+          <button type="button" onClick={onToggleTheme}>{theme === "light" ? "Cambiar a tema oscuro" : "Cambiar a tema claro"}</button>
           <button type="button" onClick={onSignOut}>Cerrar sesión</button>
         </div>}
       </div>
