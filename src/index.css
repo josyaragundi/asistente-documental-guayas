@@ -65,6 +65,9 @@ body,
   height: 100%;
 }
 
+.app.sidebar-hidden { grid-template-columns: 1fr; }
+.app.sidebar-hidden .sidebar { display: none; }
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -275,7 +278,7 @@ textarea {
 }
 
 .open-sidebar {
-  visibility: hidden;
+  visibility: visible;
 }
 
 .topbar-title {

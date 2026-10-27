@@ -143,7 +143,7 @@ export default function ChatMain({
         <button
           className="icon-btn open-sidebar"
           type="button"
-          aria-label="Abrir menú"
+          aria-label="Mostrar u ocultar panel lateral"
           onClick={onOpenSidebar}
         >
           <MenuIcon />

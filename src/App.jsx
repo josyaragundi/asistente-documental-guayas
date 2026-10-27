@@ -13,6 +13,7 @@ export default function App() {
   const [chats, setChats] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [loadingChats, setLoadingChats] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -383,7 +384,7 @@ export default function App() {
   if (!user) return <AuthScreen onAuthenticated={setUser} />;
 
   return (
-    <div className="app">
+    <div className={`app${sidebarHidden ? " sidebar-hidden" : ""}`}>
       <Sidebar
         chats={chats}
         activeId={activeId}
@@ -430,7 +431,7 @@ export default function App() {
         onToggleDocuments={() => setView("documents")}
         onDeleteDocument={deleteDocument}
         deletingDocument={deletingDocument}
-        onOpenSidebar={() => setSidebarOpen(true)}
+        onOpenSidebar={() => { setSidebarHidden((hidden) => !hidden); setSidebarOpen((open) => !open); }}
         onEditMessage={editMessage}
       />}
     </div>
