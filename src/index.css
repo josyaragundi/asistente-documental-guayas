@@ -71,6 +71,7 @@ textarea {
   cursor: pointer;
   text-align: left;
 }
+.chat-search { width: calc(100% - 20px); margin: 3px 10px 8px; padding: 8px 10px; border: 1px solid #343434; border-radius: 9px; background: #242424; color: var(--text); outline: none; font-size: 12px; }
 
 .new-chat {
   height: 40px;
@@ -313,6 +314,10 @@ textarea {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.message-body { min-width: 0; max-width: 85%; }
+.message-body .bubble { max-width: none; }
+.message-action { margin: 5px 0 0 4px; border: 0; background: transparent; color: var(--dim); cursor: pointer; font-size: 11px; opacity: 0; }
+.message.assistant:hover .message-action, .message-action:focus { opacity: 1; }
 
 .message.user .bubble {
   background: var(--user-bubble);
@@ -447,6 +452,8 @@ textarea {
   padding: 8px 4px;
   line-height: 1.45;
 }
+.voice-btn { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+.voice-btn:hover, .voice-btn.listening { background: #444; color: #fff; }
 
 .send {
   width: 36px;

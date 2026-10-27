@@ -33,6 +33,8 @@ export default function ChatMain({
   const previousMessageCountRef = useRef(0);
   const pendingPrependHeightRef = useRef(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
+  const [listening, setListening] = useState(false);
   const messages = chat?.messages ?? [];
   const latestMessage = messages[messages.length - 1];
 
@@ -109,6 +111,24 @@ export default function ChatMain({
     thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
   }
 
+  async function copyMessage(message) {
+    await navigator.clipboard?.writeText(message.text);
+    setCopiedId(message.id);
+    window.setTimeout(() => setCopiedId(""), 1400);
+  }
+
+  function startVoice() {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) return;
+    const recognition = new Recognition();
+    recognition.lang = "es-EC";
+    recognition.interimResults = false;
+    recognition.onstart = () => setListening(true);
+    recognition.onend = () => setListening(false);
+    recognition.onresult = (event) => onPromptChange(`${prompt} ${event.results[0][0].transcript}`.trim());
+    recognition.start();
+  }
+
   return (
     <main className="main">
       <header className="topbar">
@@ -167,7 +187,7 @@ export default function ChatMain({
               {message.role === "assistant" ? (
                 <span className="avatar bot">{initial}</span>
               ) : null}
-              <div className="bubble">{message.text}</div>
+              <div className="message-body"><div className="bubble">{message.text}</div>{message.role === "assistant" && <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button>}</div>
             </article>
           ))
         )}
@@ -218,6 +238,7 @@ export default function ChatMain({
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={handleKeyDown}
           />
+          <button className={`voice-btn${listening ? " listening" : ""}`} type="button" title="Dictar pregunta" onClick={startVoice} aria-label="Dictar pregunta">{listening ? "●" : "◉"}</button>
           <button
             className="send"
             type="submit"

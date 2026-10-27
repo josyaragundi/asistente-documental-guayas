@@ -221,6 +221,14 @@ export default function App() {
     setSidebarOpen(false);
   }
 
+  async function renameChat(chat) {
+    const title = window.prompt("Nombre de la conversación", chat.title)?.trim();
+    if (!title || title === chat.title) return;
+    const { error: updateError } = await insforge.database.from("conversations").update({ title }).eq("id", chat.id);
+    if (updateError) return setError(`No se pudo renombrar el chat: ${updateError.message}`);
+    setChats((current) => current.map((item) => item.id === chat.id ? { ...item, title } : item));
+  }
+
   async function sendMessage() {
     const text = prompt.trim();
     if (!text || !insforge || !user) return;
@@ -374,6 +382,7 @@ export default function App() {
         isAdmin={isAdmin}
         onNewChat={() => { setView("chat"); createChat(); }}
         onSelectChat={(id) => { setView("chat"); selectChat(id); }}
+        onRenameChat={renameChat}
         onClose={() => setSidebarOpen(false)}
         onSignOut={signOut}
         onOpenDocuments={() => setView("documents")}

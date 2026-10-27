@@ -12,8 +12,10 @@ export default function Sidebar({
   onClose,
   onSignOut,
   onOpenDocuments,
+  onRenameChat,
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const displayName = user?.profile?.name || user?.name || user?.email?.split("@")[0] || "Cuenta";
   const initial = displayName.trim().charAt(0).toLocaleUpperCase("es") || "?";
   return (
@@ -35,13 +37,15 @@ export default function Sidebar({
 
       <nav className="chat-list" aria-label="Chats recientes">
         <p className="section-label">Recientes</p>
+        <input className="chat-search" placeholder="Buscar chats" value={search} onChange={(event) => setSearch(event.target.value)} />
         {chats.length === 0 && <p className="empty-history">Tus chats aparecerán aquí.</p>}
-        {chats.map((chat) => (
+        {chats.filter((chat) => chat.title.toLowerCase().includes(search.toLowerCase())).map((chat) => (
           <button
             key={chat.id}
             className={`chat-item${chat.id === activeId ? " active" : ""}`}
             type="button"
             onClick={() => onSelectChat(chat.id)}
+            onContextMenu={(event) => { event.preventDefault(); onRenameChat(chat); }}
           >
             <span>{chat.title}</span>
           </button>
