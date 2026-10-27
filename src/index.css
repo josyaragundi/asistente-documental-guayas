@@ -358,6 +358,11 @@ textarea {
 }
 .message-body { min-width: 0; max-width: 85%; }
 .message-body .bubble { max-width: none; }
+.inline-editor { width: min(560px, 85vw); padding: 10px; border: 1px solid #9ccabd; border-radius: 14px; background: var(--composer); }
+.inline-editor textarea { width: 100%; min-height: 74px; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--text); line-height: 1.5; }
+.inline-editor div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.inline-editor button { border: 0; border-radius: 8px; padding: 7px 11px; background: #dceee7; color: #174b3d; cursor: pointer; font-size: 12px; }
+.inline-editor button:last-child { background: transparent; color: var(--muted); }
 .message-action { margin: 5px 0 0 4px; border: 0; background: transparent; color: var(--dim); cursor: pointer; font-size: 11px; opacity: 0; }
 .message.assistant:hover .message-action, .message-action:focus { opacity: 1; }
 .message.user:hover .message-action { opacity: 1; }

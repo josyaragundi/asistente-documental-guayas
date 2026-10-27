@@ -24,7 +24,7 @@ function chunkText(text: string, chunkWords = 380, overlapWords = 50): string[] 
 }
 
 export default async function ingest(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   const token = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];

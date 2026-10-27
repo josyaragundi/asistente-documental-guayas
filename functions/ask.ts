@@ -31,7 +31,7 @@ function appendWithoutOverlap(current: string, next: string, maxOverlap = 80): s
 }
 
 export default async function ask(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   const token = req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];

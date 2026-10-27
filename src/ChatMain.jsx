@@ -37,6 +37,8 @@ export default function ChatMain({
   const [copiedId, setCopiedId] = useState("");
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [editingText, setEditingText] = useState("");
   const messages = chat?.messages ?? [];
   const latestMessage = messages[messages.length - 1];
 
@@ -133,6 +135,8 @@ export default function ChatMain({
     try { recognition.start(); } catch { setListening(false); setVoiceError("El dictado no está disponible en este navegador. Prueba Chrome o Edge."); }
   }
 
+  function beginEdit(message) { setEditingId(message.id); setEditingText(message.text); }
+
   return (
     <main className="main">
       <header className="topbar">
@@ -191,7 +195,7 @@ export default function ChatMain({
               {message.role === "assistant" ? (
                 <span className="avatar bot">{initial}</span>
               ) : null}
-              <div className="message-body"><div className="bubble">{message.text}</div>{message.role === "assistant" ? <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button> : <button className="message-action" type="button" onClick={() => onEditMessage(message)}>Editar</button>}</div>
+              <div className="message-body">{editingId === message.id ? <div className="inline-editor"><textarea value={editingText} onChange={(event) => setEditingText(event.target.value)} autoFocus /><div><button type="button" onClick={() => { onEditMessage({ ...message, text: editingText }); setEditingId(""); }}>Guardar</button><button type="button" onClick={() => setEditingId("")}>Cancelar</button></div></div> : <div className="bubble">{message.text}</div>}{message.role === "assistant" ? <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button> : <button className="message-action" type="button" onClick={() => beginEdit(message)}>Editar</button>}</div>
             </article>
           ))
         )}
