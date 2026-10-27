@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AuthScreen from "./AuthScreen.jsx";
 import ChatMain from "./ChatMain.jsx";
+import AdminDocuments from "./AdminDocuments.jsx";
 import { insforge } from "./insforge.js";
 import Sidebar from "./Sidebar.jsx";
 
@@ -19,6 +20,7 @@ export default function App() {
   const [documents, setDocuments] = useState([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState("");
+  const [view, setView] = useState("chat");
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [notice, setNotice] = useState("");
@@ -358,7 +360,7 @@ export default function App() {
   }
 
   if (authLoading) {
-    return <main className="auth-screen"><p className="loading-label">Conectando con InsForge…</p></main>;
+    return <main className="auth-screen" aria-busy="true" />;
   }
   if (!user) return <AuthScreen onAuthenticated={setUser} />;
 
@@ -379,7 +381,14 @@ export default function App() {
         className={`overlay${sidebarOpen ? " show" : ""}`}
         onClick={() => setSidebarOpen(false)}
       />
-      <ChatMain
+      {view === "documents" ? <AdminDocuments
+        documents={documents}
+        uploading={uploading}
+        deletingDocument={deletingDocument}
+        onUploadPdf={uploadPdf}
+        onDeleteDocument={deleteDocument}
+        onBack={() => setView("chat")}
+      /> : <ChatMain
         chat={activeChat}
         prompt={prompt}
         notice={notice}
@@ -396,11 +405,11 @@ export default function App() {
         onUploadPdf={uploadPdf}
         documents={documents}
         documentsOpen={documentsOpen}
-        onToggleDocuments={() => setDocumentsOpen((open) => !open)}
+        onToggleDocuments={() => setView("documents")}
         onDeleteDocument={deleteDocument}
         deletingDocument={deletingDocument}
         onOpenSidebar={() => setSidebarOpen(true)}
-      />
+      />}
     </div>
   );
 }
