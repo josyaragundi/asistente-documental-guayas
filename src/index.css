@@ -322,9 +322,13 @@ textarea {
   font-size: clamp(28px, 4vw, 38px);
   font-weight: 650;
   letter-spacing: -0.04em;
-  background: linear-gradient(100deg, #f4f4f4 20%, #b9d8ce 80%);
+  background: linear-gradient(100deg, #202123 15%, #557d72 90%);
   color: transparent;
   background-clip: text;
+}
+
+:root[data-theme="dark"] .welcome-copy span {
+  background: linear-gradient(100deg, #f4f4f4 20%, #b9d8ce 80%);
 }
 
 .welcome-copy small {
@@ -491,7 +495,7 @@ textarea {
   padding: 8px 4px;
   line-height: 1.45;
 }
-.voice-btn { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+.voice-btn { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; font-size: 17px; line-height: 1; }
 .voice-btn:hover, .voice-btn.listening { background: #444; color: #fff; }
 .voice-error { margin-top: 7px; color: #b54747; text-align: center; font-size: 12px; }
 

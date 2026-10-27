@@ -241,7 +241,7 @@ export default function ChatMain({
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <button className={`voice-btn${listening ? " listening" : ""}`} type="button" title="Dictar pregunta" onClick={startVoice} aria-label="Dictar pregunta">{listening ? "●" : "◉"}</button>
+          <button className={`voice-btn${listening ? " listening" : ""}`} type="button" title="Dictar pregunta" onClick={startVoice} aria-label="Dictar pregunta">{listening ? "●" : "🎙"}</button>
           <button
             className="send"
             type="submit"
