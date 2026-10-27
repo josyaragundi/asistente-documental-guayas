@@ -534,6 +534,17 @@ textarea {
 .voice-btn:hover, .voice-btn.listening { background: #444; color: #fff; }
 .voice-error { margin-top: 7px; color: #b54747; text-align: center; font-size: 12px; }
 
+/* El saludo oscuro debe ser texto plano, nunca un bloque de degradado. */
+:root[data-theme="dark"] .welcome-copy span {
+  background: none !important;
+  background-image: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: none !important;
+}
+
 .send {
   width: 36px;
   height: 36px;
