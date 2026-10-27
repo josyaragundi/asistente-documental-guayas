@@ -26,6 +26,7 @@ export default function App() {
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("chat-theme", theme); }, [theme]);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [loadingActiveMessages, setLoadingActiveMessages] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -128,7 +129,8 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
     async function loadMessages() {
-      if (!insforge || !activeId) return;
+      if (!insforge || !activeId) { setLoadingActiveMessages(false); return; }
+      setLoadingActiveMessages(true);
       setHasOlderMessages(false);
       const { data, error: queryError } = await insforge.database
         .from("messages")
@@ -139,6 +141,7 @@ export default function App() {
       if (!mounted) return;
       if (queryError) {
         setError(`No se pudieron cargar los mensajes: ${queryError.message}`);
+        setLoadingActiveMessages(false);
         return;
       }
       const recentMessages = data ?? [];
@@ -158,6 +161,7 @@ export default function App() {
             : chat
         )
       );
+      setLoadingActiveMessages(false);
     }
     loadMessages();
     return () => {
@@ -407,6 +411,7 @@ export default function App() {
         user={user}
         hasOlderMessages={hasOlderMessages}
         loadingOlderMessages={loadingOlderMessages}
+        loadingActiveMessages={loadingActiveMessages}
         onLoadOlderMessages={loadOlderMessages}
         onPromptChange={setPrompt}
         onSubmit={sendMessage}

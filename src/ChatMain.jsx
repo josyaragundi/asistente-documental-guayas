@@ -20,6 +20,7 @@ export default function ChatMain({
   user,
   hasOlderMessages,
   loadingOlderMessages,
+  loadingActiveMessages,
   onLoadOlderMessages,
   onOpenSidebar,
 }) {
@@ -177,7 +178,7 @@ export default function ChatMain({
             </button>
           </div>
         )}
-        {messages.length === 0 ? (
+        {loadingActiveMessages ? <div className="chat-loading" aria-label="Cargando chat" /> : messages.length === 0 ? (
           <div className="empty">
             <div className="welcome-copy">
               <span>Hola, {displayName}</span>
