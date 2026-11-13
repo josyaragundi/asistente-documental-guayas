@@ -42,6 +42,14 @@ export default async function ingestPdf(req: Request): Promise<Response> {
     .limit(1);
   if (adminError) return jsonResponse({ error: "Could not verify administrator access" }, 500);
   if (!adminRecord?.length) return jsonResponse({ error: "Administrator access required" }, 403);
+  const { data: allowed, error: limitError } = await client.database.rpc("consume_rate_limit", {
+    p_user_id: authData.user.id,
+    p_bucket: "ingest-pdf",
+    p_limit: 5,
+    p_window_seconds: 600,
+  });
+  if (limitError) return jsonResponse({ error: "Rate limit could not be checked" }, 503);
+  if (allowed !== true) return jsonResponse({ error: "Has alcanzado el límite de 5 archivos cada 10 minutos." }, 429);
 
   let form: FormData;
   try {

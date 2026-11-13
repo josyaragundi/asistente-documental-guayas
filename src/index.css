@@ -713,6 +713,11 @@ textarea {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--dim); font-size: 12px; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: var(--border); }
+.google-auth { width: 100%; min-height: 42px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; font-weight: 600; }
+.google-auth:hover { background: var(--sidebar-hover); }
+.google-auth:disabled { opacity: .6; cursor: wait; }
 
 .loading-label {
   color: var(--muted);

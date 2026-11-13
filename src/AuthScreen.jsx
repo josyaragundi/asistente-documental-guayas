@@ -148,6 +148,22 @@ export default function AuthScreen({ onAuthenticated }) {
     }
   }
 
+  async function signInWithGoogle() {
+    if (!insforge) return setError("Falta configurar InsForge.");
+    setBusy(true);
+    setError("");
+    try {
+      const { error: oauthError } = await insforge.auth.signInWithOAuth("google", {
+        redirectTo: window.location.origin,
+        additionalParams: { prompt: "select_account" },
+      });
+      if (oauthError) throw oauthError;
+    } catch (oauthError) {
+      setError(oauthError.message || "No se pudo iniciar sesión con Google.");
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="auth-screen">
       <section className="auth-card">
@@ -239,6 +255,14 @@ export default function AuthScreen({ onAuthenticated }) {
                   : "Crear cuenta"}
           </button>
         </form>
+        {mode === "signin" && verificationMethod !== "code" && (
+          <>
+            <div className="auth-divider"><span>o</span></div>
+            <button className="google-auth" type="button" onClick={signInWithGoogle} disabled={busy}>
+              Continuar con Google
+            </button>
+          </>
+        )}
         {verificationMethod === "code" && (
           <p className="auth-switch">
             ¿No te llegó o venció el código?{" "}
