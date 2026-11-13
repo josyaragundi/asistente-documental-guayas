@@ -46,14 +46,6 @@ export default async function ask(req: Request): Promise<Response> {
   const client = createClient({ baseUrl, accessToken: token });
   const { data: authData, error: authError } = await client.auth.getCurrentUser();
   if (authError || !authData?.user?.id) return jsonResponse({ error: "Authentication required" }, 401);
-  const { data: allowed, error: limitError } = await client.database.rpc("consume_rate_limit", {
-    p_user_id: authData.user.id,
-    p_bucket: "ask",
-    p_limit: 20,
-    p_window_seconds: 60,
-  });
-  if (limitError) return jsonResponse({ error: "Rate limit could not be checked" }, 503);
-  if (allowed !== true) return jsonResponse({ error: "Demasiadas consultas. Intenta nuevamente en un minuto." }, 429);
 
   let body: { question?: unknown };
   try {

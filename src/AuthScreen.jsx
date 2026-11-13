@@ -14,6 +14,8 @@ export default function AuthScreen({ onAuthenticated }) {
   const [resetToken, setResetToken] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetCodeSent, setResetCodeSent] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(() => Number(sessionStorage.getItem("login-attempts") || 0));
+  const [loginLockedUntil, setLoginLockedUntil] = useState(() => Number(sessionStorage.getItem("login-locked-until") || 0));
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -40,6 +42,11 @@ export default function AuthScreen({ onAuthenticated }) {
     setBusy(true);
     setError("");
     setNotice("");
+    if (mode === "signin" && loginLockedUntil > Date.now()) {
+      setError("Has alcanzado 5 intentos fallidos. Espera unos minutos antes de volver a intentar.");
+      setBusy(false);
+      return;
+    }
     try {
       if (mode === "forgot") {
         if (!otp) {
@@ -98,6 +105,8 @@ export default function AuthScreen({ onAuthenticated }) {
           password,
         });
         if (authError) throw authError;
+        sessionStorage.removeItem("login-attempts");
+        sessionStorage.removeItem("login-locked-until");
         onAuthenticated(data.user);
       }
     } catch (authError) {
@@ -107,6 +116,14 @@ export default function AuthScreen({ onAuthenticated }) {
         setNotice("Tu correo todavía no está verificado. Ingresa el código de 6 dígitos que recibiste.");
         setError("");
       } else {
+        if (mode === "signin") {
+          const nextAttempts = loginAttempts + 1;
+          const nextLock = nextAttempts >= 5 ? Date.now() + 5 * 60 * 1000 : 0;
+          setLoginAttempts(nextAttempts);
+          setLoginLockedUntil(nextLock);
+          sessionStorage.setItem("login-attempts", String(nextAttempts));
+          if (nextLock) sessionStorage.setItem("login-locked-until", String(nextLock));
+        }
         setError(message);
       }
     } finally {
