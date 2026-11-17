@@ -1,4 +1,5 @@
 import pdfParse from "npm:pdf-parse@1.1.1";
+import { PDFDocument } from "npm:pdf-lib@1.17.1";
 import { createClient } from "npm:@insforge/sdk";
 
 const corsHeaders = (req: Request) => ({
@@ -28,14 +29,15 @@ async function invokeIngestWithRetry(client: ReturnType<typeof createClient>, bo
   throw lastError instanceof Error ? lastError : new Error("Ingestion failed after retries");
 }
 
-async function extractWithFreeOcr(file: File): Promise<string> {
+async function ocrPdfPart(bytes: Uint8Array, fileName: string): Promise<string> {
   const form = new FormData();
-  form.append("file", file, file.name);
+  form.append("file", new File([bytes], fileName, { type: "application/pdf" }), fileName);
   form.append("apikey", Deno.env.get("OCR_SPACE_API_KEY") || "helloworld");
   form.append("language", "spa");
   form.append("filetype", "PDF");
   form.append("isOverlayRequired", "false");
-  form.append("OCREngine", "2");
+  // Engine 1 is slower but works reliably with scanned PDFs in the free tier.
+  form.append("OCREngine", "1");
   const response = await fetch("https://api.ocr.space/parse/image", { method: "POST", body: form });
   const result = await response.json();
   // OCR.space can return useful pages together with a warning (for example,
@@ -49,6 +51,22 @@ async function extractWithFreeOcr(file: File): Promise<string> {
     .join("\n\n")
     .replace(/\u0000/g, " ")
     .trim();
+}
+
+async function extractWithFreeOcr(bytes: Uint8Array, fileName: string): Promise<string> {
+  // OCR.space's free tier accepts up to three PDF pages per request. Splitting
+  // in the cloud lets larger scanned PDFs be indexed page group by page group.
+  const pdf = await PDFDocument.load(bytes);
+  const textParts: string[] = [];
+  for (let start = 0; start < pdf.getPageCount(); start += 3) {
+    const part = await PDFDocument.create();
+    const pages = await part.copyPages(pdf, Array.from({ length: Math.min(3, pdf.getPageCount() - start) }, (_, index) => start + index));
+    pages.forEach((page) => part.addPage(page));
+    const partBytes = await part.save();
+    const text = await ocrPdfPart(partBytes, `${fileName}.part-${start + 1}.pdf`);
+    if (text) textParts.push(text);
+  }
+  return textParts.join("\n\n").trim();
 }
 
 function splitText(text: string, maxWords = 8_000, overlapWords = 120): string[] {
@@ -107,7 +125,7 @@ export default async function ingestPdf(req: Request): Promise<Response> {
     let text = typeof parsed.text === "string" ? parsed.text.replace(/\u0000/g, " ").trim() : "";
     let extractionMethod = "text";
     if (!text) {
-      text = await extractWithFreeOcr(new File([pdfBytes], file.name, { type: "application/pdf" }));
+      text = await extractWithFreeOcr(pdfBytes, file.name);
       extractionMethod = "ocr.space-free";
     }
     if (!text) return jsonResponse({ error: "El PDF no contiene texto legible, ni siquiera mediante OCR" }, 422);
