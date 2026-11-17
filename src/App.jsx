@@ -326,28 +326,32 @@ export default function App() {
     }
   }
 
-  async function uploadPdf(file) {
+  async function uploadPdf(files) {
     if (!insforge || !user || uploading) return;
+    const selectedFiles = Array.isArray(files) ? files : [files];
     setUploading(true);
     setError("");
-    setNotice(`Subiendo y procesando ${file.name} en la nube…`);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const { data, error: uploadError } = await insforge.functions.invoke("ingest-pdf", {
-        body: formData,
-      });
-      if (uploadError) throw uploadError;
-      setNotice(
-        `${data.source}: PDF procesado (${data.pages ?? "?"} páginas, ${data.chunksInserted} fragmentos). Ya puedes hacer preguntas.`
-      );
-      await loadDocuments();
-    } catch (uploadError) {
-      setError(`No se pudo procesar el PDF: ${uploadError.message}`);
-      setNotice("");
-    } finally {
-      setUploading(false);
+    const completed = [];
+    const failed = [];
+    for (let index = 0; index < selectedFiles.length; index += 1) {
+      const file = selectedFiles[index];
+      setNotice(`Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const { data, error: uploadError } = await insforge.functions.invoke("ingest-pdf", { body: formData });
+        if (uploadError) throw uploadError;
+        completed.push(`${data.source} (${data.chunksInserted} fragmentos)`);
+      } catch (uploadError) {
+        failed.push(`${file.name}: ${uploadError.message}`);
+      }
     }
+    await loadDocuments();
+    setUploading(false);
+    if (failed.length) {
+      setError(`No se pudieron procesar ${failed.length} archivo(s): ${failed.join("; ")}`);
+    }
+    setNotice(`${completed.length} de ${selectedFiles.length} documento(s) procesado(s).${completed.length ? ` ${completed.join(", ")}.` : ""}`);
   }
 
   async function deleteDocument(source) {

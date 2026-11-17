@@ -13,9 +13,9 @@ export default function AdminDocuments({ documents, uploading, deletingDocument,
         <div className="admin-intro">
           <h1>Archivos del asistente</h1>
           <p>Sube documentos PDF para incorporarlos a la base de conocimiento o elimina los que ya no deban utilizarse.</p>
-          <input ref={inputRef} hidden type="file" accept="application/pdf,.pdf" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onUploadPdf(file); }} />
+          <input ref={inputRef} hidden multiple type="file" accept="application/pdf,.pdf" onChange={(event) => { const files = [...(event.target.files ?? [])]; event.target.value = ""; if (files.length) onUploadPdf(files); }} />
           <button className="upload-primary" type="button" disabled={uploading} onClick={() => inputRef.current?.click()}>
-            {uploading ? "Procesando documento…" : "Subir documento PDF"}
+            {uploading ? "Procesando documentos…" : "Subir documentos PDF"}
           </button>
         </div>
         <div className="admin-documents-card">

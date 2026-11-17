@@ -216,9 +216,9 @@ export default function ChatMain({
             accept="application/pdf,.pdf"
             hidden
             onChange={(event) => {
-              const file = event.target.files?.[0];
+              const files = [...(event.target.files ?? [])];
               event.target.value = "";
-              if (file) onUploadPdf(file);
+              if (files.length) onUploadPdf(files);
             }}
           />
           {isAdmin && <button
