@@ -68,10 +68,10 @@ async function extractWithFreeOcr(bytes: Uint8Array, fileName: string): Promise<
     parts.push({ start, bytes: await part.save() });
   }
   const textParts: string[] = [];
-  // Three concurrent OCR requests keep large PDFs below the edge timeout
-  // while avoiding an unbounded burst against the free OCR service.
-  for (let batchStart = 0; batchStart < parts.length; batchStart += 3) {
-    const batch = parts.slice(batchStart, batchStart + 3);
+  // Six concurrent OCR requests keep 40–52 page scans below the edge timeout
+  // while still avoiding an unbounded burst against the free OCR service.
+  for (let batchStart = 0; batchStart < parts.length; batchStart += 6) {
+    const batch = parts.slice(batchStart, batchStart + 6);
     const results = await Promise.all(batch.map(({ start, bytes: partBytes }) =>
       ocrPdfPart(partBytes, `${fileName}.part-${start + 1}.pdf`)
     ));
