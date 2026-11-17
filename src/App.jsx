@@ -91,13 +91,23 @@ export default function App() {
 
   const loadDocuments = useCallback(async () => {
     if (!insforge || !user || !isAdmin) return;
-    const { data, error: queryError } = await insforge.database
-      .from("documents")
-      .select("source, created_at")
-      .order("created_at", { ascending: false });
+    const rows = [];
+    let offset = 0;
+    let queryError = null;
+    do {
+      const result = await insforge.database
+        .from("documents")
+        .select("source, created_at")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + 999);
+      if (result.error) { queryError = result.error; break; }
+      rows.push(...(result.data ?? []));
+      offset += 1000;
+      if ((result.data ?? []).length < 1000) break;
+    } while (true);
     if (!queryError) {
       const grouped = new Map();
-      for (const row of data ?? []) {
+      for (const row of rows) {
         const current = grouped.get(row.source) ?? { source: row.source, chunks: 0, created_at: row.created_at };
         current.chunks += 1;
         grouped.set(row.source, current);
