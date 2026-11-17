@@ -13,6 +13,21 @@ function jsonResponse(body: unknown, status = 200, req?: Request): Response {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders(req ?? new Request("https://localhost")) });
 }
 
+async function invokeIngestWithRetry(client: ReturnType<typeof createClient>, body: { text: string; source: string }) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const result = await client.functions.invoke("ingest", { body });
+      if (!result.error) return result;
+      lastError = result.error;
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 700));
+  }
+  throw lastError instanceof Error ? lastError : new Error("Ingestion failed after retries");
+}
+
 function splitText(text: string, maxWords = 8_000, overlapWords = 120): string[] {
   const words = text.trim().split(/\s+/u).filter(Boolean);
   const batches: string[] = [];
@@ -67,9 +82,7 @@ export default async function ingestPdf(req: Request): Promise<Response> {
     const results: Array<{ documentId: string; chunksInserted: number }> = [];
     for (let start = 0; start < batches.length; start += 2) {
       const pair = await Promise.all(batches.slice(start, start + 2).map(async (batch) => {
-        const { data, error } = await client.functions.invoke("ingest", {
-          body: { text: batch, source },
-        });
+        const { data, error } = await invokeIngestWithRetry(client, { text: batch, source });
         if (error) throw error;
         return data as { documentId: string; chunksInserted: number };
       }));
