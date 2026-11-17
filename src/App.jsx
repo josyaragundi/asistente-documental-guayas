@@ -17,6 +17,7 @@ export default function App() {
   const [prompt, setPrompt] = useState("");
   const [loadingChats, setLoadingChats] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: "" });
   const [isAdmin, setIsAdmin] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
@@ -330,11 +331,13 @@ export default function App() {
     if (!insforge || !user || uploading) return;
     const selectedFiles = Array.isArray(files) ? files : [files];
     setUploading(true);
+    setUploadProgress({ current: 0, total: selectedFiles.length, fileName: "" });
     setError("");
     const completed = [];
     const failed = [];
     for (let index = 0; index < selectedFiles.length; index += 1) {
       const file = selectedFiles[index];
+      setUploadProgress({ current: index + 1, total: selectedFiles.length, fileName: file.name });
       setNotice(`Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
       try {
         const formData = new FormData();
@@ -347,6 +350,7 @@ export default function App() {
       }
     }
     await loadDocuments();
+    setUploadProgress({ current: selectedFiles.length, total: selectedFiles.length, fileName: "Completado" });
     setUploading(false);
     if (failed.length) {
       setError(`No se pudieron procesar ${failed.length} archivo(s): ${failed.join("; ")}`);
@@ -400,6 +404,9 @@ export default function App() {
       {view === "documents" ? <AdminDocuments
         documents={documents}
         uploading={uploading}
+        uploadProgress={uploadProgress}
+        notice={notice}
+        error={error}
         deletingDocument={deletingDocument}
         onUploadPdf={uploadPdf}
         onDeleteDocument={deleteDocument}

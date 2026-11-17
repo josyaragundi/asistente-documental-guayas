@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { MenuIcon } from "./icons.jsx";
 
-export default function AdminDocuments({ documents, uploading, deletingDocument, onUploadPdf, onDeleteDocument, onBack }) {
+export default function AdminDocuments({ documents, uploading, uploadProgress, notice, error, deletingDocument, onUploadPdf, onDeleteDocument, onBack }) {
   const inputRef = useRef(null);
   return (
     <main className="main admin-page">
@@ -17,6 +17,18 @@ export default function AdminDocuments({ documents, uploading, deletingDocument,
           <button className="upload-primary" type="button" disabled={uploading} onClick={() => inputRef.current?.click()}>
             {uploading ? "Procesando documentos…" : "Subir documentos PDF"}
           </button>
+          {uploading && uploadProgress.total > 0 && (
+            <div className="upload-progress" role="status" aria-live="polite">
+              <div className="upload-progress-heading">
+                <span>Procesando {uploadProgress.current} de {uploadProgress.total}</span>
+                <strong>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</strong>
+              </div>
+              <div className="upload-progress-track"><div className="upload-progress-bar" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} /></div>
+              <small>{uploadProgress.fileName}</small>
+            </div>
+          )}
+          {notice && <p className="admin-status" role="status">{notice}</p>}
+          {error && <p className="admin-status error" role="alert">{error}</p>}
         </div>
         <div className="admin-documents-card">
           <div className="admin-card-heading"><strong>Documentos cargados</strong><span>{documents.length} {documents.length === 1 ? "archivo" : "archivos"}</span></div>
