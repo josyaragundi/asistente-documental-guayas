@@ -44,7 +44,10 @@ async function ocrPdfPart(bytes: Uint8Array, fileName: string): Promise<string> 
   // the free tier's three-page limit). Keep the extracted pages instead of
   // discarding the whole document.
   if (!response.ok || (result?.IsErroredOnProcessing && !result?.ParsedResults?.length)) {
-    throw new Error(result?.ErrorMessage?.join?.(" ") || "OCR no pudo procesar el PDF");
+    const message = Array.isArray(result?.ErrorMessage)
+      ? result.ErrorMessage.join(" ")
+      : String(result?.ErrorMessage || result?.error || "OCR no pudo procesar el PDF");
+    throw new Error(message);
   }
   return (result?.ParsedResults ?? [])
     .map((page: { ParsedText?: string }) => page.ParsedText || "")
