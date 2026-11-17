@@ -90,25 +90,25 @@ export default async function ask(req: Request): Promise<Response> {
     const terms = [...new Set(question.toLocaleLowerCase("es").match(/[a-záéíóúüñ]{6,}/giu) ?? [])]
       .filter((term) => !stopwords.has(term))
       .sort((a, b) => b.length - a.length)
-      .slice(0, 4);
-    const lexicalRows = [];
-    for (const term of terms) {
+      .slice(0, 2);
+    const lexicalResults = await Promise.all(terms.map(async (term) => {
       const { data: rows, error: lexicalError } = await client.database
         .from("documents")
         .select("id, content, source, chunk_index")
         .ilike("content", `%${term}%`)
-        .limit(4);
+        .limit(3);
       if (lexicalError) throw lexicalError;
-      lexicalRows.push(...(rows ?? []));
-    }
-    for (const row of lexicalRows) {
+      return rows ?? [];
+    }));
+    for (const row of lexicalResults.flat()) {
       if (!matches.some((match) => match.id === row.id)) {
-        matches.push({ id: row.id, content: row.content, source: row.source, similarity: 0.2 });
+        matches.unshift({ id: row.id, content: row.content, source: row.source, similarity: 0.2 });
       }
     }
-    if (matches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
+    const selectedMatches = matches.slice(0, 8);
+    if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
-    const sources = [...new Map(matches.map((match) => [
+    const sources = [...new Map(selectedMatches.map((match) => [
       match.source,
       { source: match.source, score: Number(match.similarity.toFixed(4)) },
     ])).values()];
@@ -118,12 +118,12 @@ export default async function ask(req: Request): Promise<Response> {
     const articleNumber = question.match(/\b(?:art(?:ículo)?\.?\s*)(\d{1,3})\b/i)?.[1];
     if (articleNumber) {
       const articleStart = new RegExp(`\\bArt(?:ículo)?\\.?\\s*${articleNumber}\\s*(?:\\.\\s*-|[\\-–:])\\s*`, "i");
-      let articleChunk = matches.find((match) => articleStart.test(match.content));
-      if (!articleChunk && matches[0]) {
+      let articleChunk = selectedMatches.find((match) => articleStart.test(match.content));
+      if (!articleChunk && selectedMatches[0]) {
         const { data: exactArticleRows, error: articleError } = await client.database
           .from("documents")
           .select("id, document_id, content, source, chunk_index")
-          .eq("source", matches[0].source)
+          .eq("source", selectedMatches[0].source)
           .ilike("content", `%Art. ${articleNumber}%`)
           .order("chunk_index", { ascending: true })
           .limit(5);
@@ -132,7 +132,7 @@ export default async function ask(req: Request): Promise<Response> {
       }
 
       if (articleChunk) {
-        const articleIndex = Math.max(0, matches.findIndex((match) => match.id === articleChunk.id));
+        const articleIndex = Math.max(0, selectedMatches.findIndex((match) => match.id === articleChunk.id));
         let articleDocument = articleChunk.content;
         const { data: articleMeta, error: metaError } = await client.database
           .from("documents")
@@ -160,21 +160,21 @@ export default async function ask(req: Request): Promise<Response> {
         const nextArticle = rest.search(/\bArt(?:ículo)?\.?\s*\d{1,3}\s*[.\-–:]/i);
         const articleText = rest.slice(0, nextArticle < 0 ? 2200 : nextArticle).trim();
         if (articleText) {
-          const semanticMatch = matches.find((match) => match.id === articleChunk.id);
+          const semanticMatch = selectedMatches.find((match) => match.id === articleChunk.id);
           return jsonResponse({
             answer: `El artículo ${articleNumber} establece: ${articleText} [${articleIndex + 1}]`,
             sources: [{
               source: articleChunk.source,
               score: semanticMatch ? Number(semanticMatch.similarity.toFixed(4)) : null,
             }],
-            retrievedChunks: matches.length,
+            retrievedChunks: selectedMatches.length,
             model: "extractive-article-match",
           });
         }
       }
     }
 
-    const context = matches
+    const context = selectedMatches
       .map((match, index) => `[${index + 1}] Fuente: ${match.source}\n${match.content}`)
       .join("\n\n---\n\n");
     const completionResponse = await fetch(aiUrl, {
@@ -201,7 +201,7 @@ export default async function ask(req: Request): Promise<Response> {
     return jsonResponse({
       answer,
       sources,
-      retrievedChunks: matches.length,
+      retrievedChunks: selectedMatches.length,
       model: completion.model,
     });
   } catch (error) {
