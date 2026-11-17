@@ -352,20 +352,27 @@ export default function App() {
         if (metadataError) throw metadataError;
         const pages = Number(metadata?.pages) || 0;
         const splitLargePdf = file.size > 2 * 1024 * 1024 && pages > 10;
-        const starts = splitLargePdf ? Array.from({ length: Math.ceil(pages / 2) }, (_, part) => part * 2) : [null];
+        const starts = splitLargePdf ? Array.from({ length: pages }, (_, part) => part) : [null];
         let chunks = 0;
         for (const pageStart of starts) {
           const formData = new FormData();
           formData.append("file", file);
           if (pageStart !== null) {
             formData.append("pageStart", String(pageStart));
-            formData.append("pageCount", "2");
+          formData.append("pageCount", "1");
           }
-          const { data, error: uploadError } = await insforge.functions.invoke("ingest-pdf", { body: formData });
+          let partResult = null;
+          let uploadError = new Error("No se pudo iniciar el bloque");
+          for (let attempt = 0; attempt < 3 && uploadError; attempt += 1) {
+            const result = await insforge.functions.invoke("ingest-pdf", { body: formData });
+            partResult = result.data;
+            uploadError = result.error;
+            if (uploadError && attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
           if (uploadError) throw uploadError;
-          chunks += Number(data?.chunksInserted) || 0;
+          chunks += Number(partResult?.chunksInserted) || 0;
           setNotice(splitLargePdf
-            ? `Procesando ${file.name}: páginas ${Math.min(pageStart + 1, pages)}-${Math.min(pageStart + 2, pages)} de ${pages}…`
+            ? `Procesando ${file.name}: página ${Math.min(pageStart + 1, pages)} de ${pages}…`
             : `Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
         }
         completed.push(`${file.name} (${chunks} fragmentos)`);
