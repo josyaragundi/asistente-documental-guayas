@@ -442,7 +442,7 @@ export default function App() {
         onToggleTheme={() => setTheme((current) => current === "light" ? "dark" : "light")}
         onClose={() => setSidebarOpen(false)}
         onSignOut={signOut}
-        onOpenDocuments={() => setView("documents")}
+        onOpenDocuments={() => { setView("documents"); loadDocuments(); }}
       />
       <div
         className={`overlay${sidebarOpen ? " show" : ""}`}
