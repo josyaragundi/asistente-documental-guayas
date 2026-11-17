@@ -38,7 +38,10 @@ async function extractWithFreeOcr(file: File): Promise<string> {
   form.append("OCREngine", "2");
   const response = await fetch("https://api.ocr.space/parse/image", { method: "POST", body: form });
   const result = await response.json();
-  if (!response.ok || result?.IsErroredOnProcessing) {
+  // OCR.space can return useful pages together with a warning (for example,
+  // the free tier's three-page limit). Keep the extracted pages instead of
+  // discarding the whole document.
+  if (!response.ok || (result?.IsErroredOnProcessing && !result?.ParsedResults?.length)) {
     throw new Error(result?.ErrorMessage?.join?.(" ") || "OCR no pudo procesar el PDF");
   }
   return (result?.ParsedResults ?? [])
