@@ -60,14 +60,22 @@ async function extractWithFreeOcr(bytes: Uint8Array, fileName: string): Promise<
   // OCR.space's free tier accepts up to three PDF pages per request. Splitting
   // in the cloud lets larger scanned PDFs be indexed page group by page group.
   const pdf = await PDFDocument.load(bytes);
-  const textParts: string[] = [];
+  const parts: Array<{ start: number; bytes: Uint8Array }> = [];
   for (let start = 0; start < pdf.getPageCount(); start += 3) {
     const part = await PDFDocument.create();
     const pages = await part.copyPages(pdf, Array.from({ length: Math.min(3, pdf.getPageCount() - start) }, (_, index) => start + index));
     pages.forEach((page) => part.addPage(page));
-    const partBytes = await part.save();
-    const text = await ocrPdfPart(partBytes, `${fileName}.part-${start + 1}.pdf`);
-    if (text) textParts.push(text);
+    parts.push({ start, bytes: await part.save() });
+  }
+  const textParts: string[] = [];
+  // Three concurrent OCR requests keep large PDFs below the edge timeout
+  // while avoiding an unbounded burst against the free OCR service.
+  for (let batchStart = 0; batchStart < parts.length; batchStart += 3) {
+    const batch = parts.slice(batchStart, batchStart + 3);
+    const results = await Promise.all(batch.map(({ start, bytes: partBytes }) =>
+      ocrPdfPart(partBytes, `${fileName}.part-${start + 1}.pdf`)
+    ));
+    textParts.push(...results.filter(Boolean));
   }
   return textParts.join("\n\n").trim();
 }
