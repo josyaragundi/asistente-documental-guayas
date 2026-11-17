@@ -72,8 +72,8 @@ export default async function ask(req: Request): Promise<Response> {
 
     const { data, error } = await client.database.rpc("match_documents", {
       query_embedding: queryEmbedding,
-      match_count: 5,
-      match_threshold: 0.3,
+      match_count: 12,
+      match_threshold: 0.18,
     });
     if (error) throw error;
 
@@ -83,6 +83,29 @@ export default async function ask(req: Request): Promise<Response> {
       source: string;
       similarity: number;
     }>;
+    // Recuperación léxica de respaldo para encabezados, numerales, nombres y
+    // cifras que pueden quedar mal representados por un OCR o una pregunta
+    // formulada con términos exactos del documento.
+    const stopwords = new Set(["según", "documento", "candidata", "candidato", "cuál", "cuales", "cómo", "como", "qué", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di"]);
+    const terms = [...new Set(question.toLocaleLowerCase("es").match(/[a-záéíóúüñ]{6,}/giu) ?? [])]
+      .filter((term) => !stopwords.has(term))
+      .sort((a, b) => b.length - a.length)
+      .slice(0, 4);
+    const lexicalRows = [];
+    for (const term of terms) {
+      const { data: rows, error: lexicalError } = await client.database
+        .from("documents")
+        .select("id, content, source, chunk_index")
+        .ilike("content", `%${term}%`)
+        .limit(4);
+      if (lexicalError) throw lexicalError;
+      lexicalRows.push(...(rows ?? []));
+    }
+    for (const row of lexicalRows) {
+      if (!matches.some((match) => match.id === row.id)) {
+        matches.push({ id: row.id, content: row.content, source: row.source, similarity: 0.2 });
+      }
+    }
     if (matches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     const sources = [...new Map(matches.map((match) => [
