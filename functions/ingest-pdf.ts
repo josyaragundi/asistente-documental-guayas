@@ -28,6 +28,26 @@ async function invokeIngestWithRetry(client: ReturnType<typeof createClient>, bo
   throw lastError instanceof Error ? lastError : new Error("Ingestion failed after retries");
 }
 
+async function extractWithFreeOcr(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  form.append("apikey", Deno.env.get("OCR_SPACE_API_KEY") || "helloworld");
+  form.append("language", "spa");
+  form.append("filetype", "PDF");
+  form.append("isOverlayRequired", "false");
+  form.append("OCREngine", "2");
+  const response = await fetch("https://api.ocr.space/parse/image", { method: "POST", body: form });
+  const result = await response.json();
+  if (!response.ok || result?.IsErroredOnProcessing) {
+    throw new Error(result?.ErrorMessage?.join?.(" ") || "OCR no pudo procesar el PDF");
+  }
+  return (result?.ParsedResults ?? [])
+    .map((page: { ParsedText?: string }) => page.ParsedText || "")
+    .join("\n\n")
+    .replace(/\u0000/g, " ")
+    .trim();
+}
+
 function splitText(text: string, maxWords = 8_000, overlapWords = 120): string[] {
   const words = text.trim().split(/\s+/u).filter(Boolean);
   const batches: string[] = [];
@@ -73,9 +93,21 @@ export default async function ingestPdf(req: Request): Promise<Response> {
   if (file.size > 25 * 1024 * 1024) return jsonResponse({ error: "PDF exceeds the 25 MB limit" }, 413);
 
   try {
-    const parsed = await pdfParse(new Uint8Array(await file.arrayBuffer()));
-    const text = typeof parsed.text === "string" ? parsed.text.replace(/\u0000/g, " ").trim() : "";
-    if (!text) return jsonResponse({ error: "No selectable text was found in the PDF" }, 422);
+    const pdfBytes = new Uint8Array(await file.arrayBuffer());
+    let parsed: { text?: string; numpages?: number } = {};
+    try {
+      parsed = await pdfParse(pdfBytes);
+    } catch {
+      // Algunos escaneos tienen una estructura que pdf-parse no reconoce;
+      // OCR.space todavía puede extraer su contenido visual.
+    }
+    let text = typeof parsed.text === "string" ? parsed.text.replace(/\u0000/g, " ").trim() : "";
+    let extractionMethod = "text";
+    if (!text) {
+      text = await extractWithFreeOcr(new File([pdfBytes], file.name, { type: "application/pdf" }));
+      extractionMethod = "ocr.space-free";
+    }
+    if (!text) return jsonResponse({ error: "El PDF no contiene texto legible, ni siquiera mediante OCR" }, 422);
 
     const batches = splitText(text);
     const source = file.name.slice(0, 500);
@@ -97,6 +129,7 @@ export default async function ingestPdf(req: Request): Promise<Response> {
       chunksInserted: results.reduce((sum, result) => sum + result.chunksInserted, 0),
       documentIds: results.map((result) => result.documentId),
       embeddingModel: "@cf/baai/bge-m3",
+      extractionMethod,
     }, 201);
   } catch (error) {
     console.error("PDF ingestion failed:", error);
