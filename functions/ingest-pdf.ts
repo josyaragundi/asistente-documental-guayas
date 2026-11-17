@@ -155,7 +155,21 @@ export default async function ingestPdf(req: Request): Promise<Response> {
   if (file.size > 25 * 1024 * 1024) return jsonResponse({ error: "PDF exceeds the 25 MB limit" }, 413);
 
   try {
-    const pdfBytes = new Uint8Array(await file.arrayBuffer());
+    let pdfBytes = new Uint8Array(await file.arrayBuffer());
+    const source = file.name.slice(0, 500);
+    const originalPdf = await PDFDocument.load(pdfBytes);
+    const pageCount = originalPdf.getPageCount();
+    if (form.get("metadata") === "true") {
+      return jsonResponse({ source, pages: pageCount }, 200, req);
+    }
+    const pageStart = Number(form.get("pageStart"));
+    const pageCountRequest = Number(form.get("pageCount"));
+    if (Number.isInteger(pageStart) && pageStart >= 0 && Number.isInteger(pageCountRequest) && pageCountRequest > 0 && pageStart < pageCount) {
+      const part = await PDFDocument.create();
+      const pages = await part.copyPages(originalPdf, Array.from({ length: Math.min(pageCountRequest, pageCount - pageStart) }, (_, index) => pageStart + index));
+      pages.forEach((page) => part.addPage(page));
+      pdfBytes = await part.save();
+    }
     let parsed: { text?: string; numpages?: number } = {};
     try {
       parsed = await pdfParse(pdfBytes);
@@ -172,7 +186,6 @@ export default async function ingestPdf(req: Request): Promise<Response> {
     if (!text) return jsonResponse({ error: "El PDF no contiene texto legible, ni siquiera mediante OCR" }, 422);
 
     const batches = splitText(text);
-    const source = file.name.slice(0, 500);
     const results: Array<{ documentId: string; chunksInserted: number }> = [];
     for (let start = 0; start < batches.length; start += 2) {
       const pair = await Promise.all(batches.slice(start, start + 2).map(async (batch) => {

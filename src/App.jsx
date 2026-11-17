@@ -345,11 +345,30 @@ export default function App() {
       setUploadProgress({ current: index + 1, total: selectedFiles.length, fileName: file.name });
       setNotice(`Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const { data, error: uploadError } = await insforge.functions.invoke("ingest-pdf", { body: formData });
-        if (uploadError) throw uploadError;
-        completed.push(`${data.source} (${data.chunksInserted} fragmentos)`);
+        const metadataForm = new FormData();
+        metadataForm.append("file", file);
+        metadataForm.append("metadata", "true");
+        const { data: metadata, error: metadataError } = await insforge.functions.invoke("ingest-pdf", { body: metadataForm });
+        if (metadataError) throw metadataError;
+        const pages = Number(metadata?.pages) || 0;
+        const splitLargePdf = file.size > 2 * 1024 * 1024 && pages > 10;
+        const starts = splitLargePdf ? Array.from({ length: Math.ceil(pages / 2) }, (_, part) => part * 2) : [null];
+        let chunks = 0;
+        for (const pageStart of starts) {
+          const formData = new FormData();
+          formData.append("file", file);
+          if (pageStart !== null) {
+            formData.append("pageStart", String(pageStart));
+            formData.append("pageCount", "2");
+          }
+          const { data, error: uploadError } = await insforge.functions.invoke("ingest-pdf", { body: formData });
+          if (uploadError) throw uploadError;
+          chunks += Number(data?.chunksInserted) || 0;
+          setNotice(splitLargePdf
+            ? `Procesando ${file.name}: páginas ${Math.min(pageStart + 1, pages)}-${Math.min(pageStart + 2, pages)} de ${pages}…`
+            : `Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
+        }
+        completed.push(`${file.name} (${chunks} fragmentos)`);
       } catch (uploadError) {
         // Edge functions can finish OCR/embedding after the SDK's 30-second
         // request window closes. Confirm the durable database result before
