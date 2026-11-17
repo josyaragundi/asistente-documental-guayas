@@ -37,7 +37,7 @@ async function ocrPdfPart(bytes: Uint8Array, fileName: string): Promise<string> 
       binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
     }
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(geminiKey),
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + encodeURIComponent(geminiKey),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,8 +51,11 @@ async function ocrPdfPart(bytes: Uint8Array, fileName: string): Promise<string> 
       },
     );
     const result = await response.json();
-    if (!response.ok) throw new Error(String(result?.error?.message || "Gemini OCR no pudo procesar el PDF"));
-    return String(result?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("\n") || "").trim();
+    if (response.ok) {
+      return String(result?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("\n") || "").trim();
+    }
+    // Gemini may temporarily return 503 during demand spikes. Continue with
+    // the existing OCR provider instead of failing the complete PDF.
   }
 
   const form = new FormData();
