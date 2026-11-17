@@ -61,15 +61,17 @@ async function extractWithFreeOcr(bytes: Uint8Array, fileName: string): Promise<
   // in the cloud lets larger scanned PDFs be indexed page group by page group.
   const pdf = await PDFDocument.load(bytes);
   const parts: Array<{ start: number; bytes: Uint8Array }> = [];
-  for (let start = 0; start < pdf.getPageCount(); start += 3) {
+  // Smaller parts keep every OCR request comfortably below the edge
+  // function's request window, even for slow scanned pages.
+  for (let start = 0; start < pdf.getPageCount(); start += 2) {
     const part = await PDFDocument.create();
     const pages = await part.copyPages(pdf, Array.from({ length: Math.min(3, pdf.getPageCount() - start) }, (_, index) => start + index));
     pages.forEach((page) => part.addPage(page));
     parts.push({ start, bytes: await part.save() });
   }
   const textParts: string[] = [];
-  // Six concurrent OCR requests keep 40–52 page scans below the edge timeout
-  // while still avoiding an unbounded burst against the free OCR service.
+  // Six small OCR requests are faster and more reliable than fewer large
+  // requests, while staying within the free service's practical limits.
   for (let batchStart = 0; batchStart < parts.length; batchStart += 6) {
     const batch = parts.slice(batchStart, batchStart + 6);
     const results = await Promise.all(batch.map(({ start, bytes: partBytes }) =>
