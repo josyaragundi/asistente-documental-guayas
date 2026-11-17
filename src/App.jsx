@@ -346,7 +346,23 @@ export default function App() {
         if (uploadError) throw uploadError;
         completed.push(`${data.source} (${data.chunksInserted} fragmentos)`);
       } catch (uploadError) {
-        failed.push(`${file.name}: ${uploadError.message}`);
+        // Edge functions can finish OCR/embedding after the SDK's 30-second
+        // request window closes. Confirm the durable database result before
+        // showing a failure, so users do not retry and create duplicates.
+        let recovered = false;
+        for (let attempt = 0; attempt < 12 && !recovered; attempt += 1) {
+          if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 5000));
+          const { data: indexedRows } = await insforge.database
+            .from("documents")
+            .select("id")
+            .eq("source", file.name)
+            .limit(1);
+          if (indexedRows?.length) {
+            completed.push(`${file.name} (procesado en segundo plano)`);
+            recovered = true;
+          }
+        }
+        if (!recovered) failed.push(`${file.name}: ${uploadError.message || "No se pudo confirmar el procesamiento"}`);
       }
     }
     await loadDocuments();
