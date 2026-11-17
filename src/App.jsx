@@ -489,7 +489,10 @@ export default function App() {
         onToggleDocuments={() => setView("documents")}
         onDeleteDocument={deleteDocument}
         deletingDocument={deletingDocument}
-        onOpenSidebar={() => { setSidebarHidden((hidden) => !hidden); setSidebarOpen((open) => !open); }}
+        // The hamburger opens the panel immediately. Hiding the sidebar is a
+        // separate desktop action; toggling both states here could leave the
+        // panel marked open while CSS still kept it display:none.
+        onOpenSidebar={() => { setSidebarHidden(false); setSidebarOpen(true); }}
       />}
     </div>
   );
