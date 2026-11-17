@@ -11,7 +11,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [chats, setChats] = useState([]);
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId] = useState(() => localStorage.getItem("chat-active-id") || null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -22,9 +22,14 @@ export default function App() {
   const [documents, setDocuments] = useState([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState("");
-  const [view, setView] = useState("chat");
+  const [view, setView] = useState(() => localStorage.getItem("chat-view") || "chat");
   const [theme, setTheme] = useState(() => localStorage.getItem("chat-theme") || "light");
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("chat-theme", theme); }, [theme]);
+  useEffect(() => { localStorage.setItem("chat-view", view); }, [view]);
+  useEffect(() => {
+    if (activeId) localStorage.setItem("chat-active-id", activeId);
+    else localStorage.removeItem("chat-active-id");
+  }, [activeId]);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [loadingActiveMessages, setLoadingActiveMessages] = useState(false);
@@ -126,16 +131,6 @@ export default function App() {
       setActiveId(null);
     }
   }, [user, loadChats]);
-
-  // A refresh or a new login always opens the general chat screen. The
-  // administration view is intentionally transient and must not be restored
-  // as if it were the last conversation.
-  useEffect(() => {
-    if (user) {
-      setView("chat");
-      setActiveId(null);
-    }
-  }, [user]);
 
   useEffect(() => {
     let mounted = true;
