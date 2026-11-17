@@ -127,6 +127,16 @@ export default function App() {
     }
   }, [user, loadChats]);
 
+  // A refresh or a new login always opens the general chat screen. The
+  // administration view is intentionally transient and must not be restored
+  // as if it were the last conversation.
+  useEffect(() => {
+    if (user) {
+      setView("chat");
+      setActiveId(null);
+    }
+  }, [user]);
+
   useEffect(() => {
     let mounted = true;
     async function loadMessages() {
