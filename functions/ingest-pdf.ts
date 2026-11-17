@@ -30,6 +30,31 @@ async function invokeIngestWithRetry(client: ReturnType<typeof createClient>, bo
 }
 
 async function ocrPdfPart(bytes: Uint8Array, fileName: string): Promise<string> {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (geminiKey) {
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    }
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(geminiKey),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: "Transcribe fielmente todo el texto visible de este PDF escaneado. Conserva títulos, listas, tablas y números. Devuelve únicamente el texto transcrito, sin comentarios." },
+            { inline_data: { mime_type: "application/pdf", data: btoa(binary) } },
+          ] }],
+          generationConfig: { temperature: 0 },
+        }),
+      },
+    );
+    const result = await response.json();
+    if (!response.ok) throw new Error(String(result?.error?.message || "Gemini OCR no pudo procesar el PDF"));
+    return String(result?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("\n") || "").trim();
+  }
+
   const form = new FormData();
   form.append("file", new File([bytes], fileName, { type: "application/pdf" }), fileName);
   form.append("apikey", Deno.env.get("OCR_SPACE_API_KEY") || "helloworld");
