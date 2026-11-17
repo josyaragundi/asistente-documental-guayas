@@ -72,8 +72,8 @@ export default async function ask(req: Request): Promise<Response> {
 
     const { data, error } = await client.database.rpc("match_documents", {
       query_embedding: queryEmbedding,
-      match_count: 12,
-      match_threshold: 0.18,
+      match_count: 20,
+      match_threshold: 0.22,
     });
     if (error) throw error;
 
@@ -87,25 +87,34 @@ export default async function ask(req: Request): Promise<Response> {
     // cifras que pueden quedar mal representados por un OCR o una pregunta
     // formulada con términos exactos del documento.
     const stopwords = new Set(["según", "documento", "candidata", "candidato", "cuál", "cuales", "cómo", "como", "qué", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di"]);
-    const terms = [...new Set(question.toLocaleLowerCase("es").match(/[a-záéíóúüñ]{6,}/giu) ?? [])]
+    const terms = [...new Set(question.toLocaleLowerCase("es").match(/[a-záéíóúüñ]{5,}/giu) ?? [])]
       .filter((term) => !stopwords.has(term))
       .sort((a, b) => b.length - a.length)
-      .slice(0, 2);
+      .slice(0, 4);
     const lexicalResults = await Promise.all(terms.map(async (term) => {
       const { data: rows, error: lexicalError } = await client.database
         .from("documents")
         .select("id, content, source, chunk_index")
         .ilike("content", `%${term}%`)
-        .limit(3);
+        .limit(10);
       if (lexicalError) throw lexicalError;
-      return rows ?? [];
+      return (rows ?? []).map((row) => {
+        const lowerContent = String(row.content || "").toLocaleLowerCase("es");
+        const hits = terms.reduce((count, candidate) => count + (lowerContent.includes(candidate) ? 1 : 0), 0);
+        return { ...row, lexicalScore: Math.min(0.62, 0.28 + hits * 0.1) };
+      });
     }));
     for (const row of lexicalResults.flat()) {
-      if (!matches.some((match) => match.id === row.id)) {
-        matches.unshift({ id: row.id, content: row.content, source: row.source, similarity: 0.2 });
+      const existing = matches.find((match) => match.id === row.id);
+      if (existing) {
+        existing.similarity = Math.max(existing.similarity, row.lexicalScore);
+      } else if (row.lexicalScore >= 0.38) {
+        matches.push({ id: row.id, content: row.content, source: row.source, similarity: row.lexicalScore });
       }
     }
-    const selectedMatches = matches.slice(0, 8);
+    const selectedMatches = matches
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     const sources = [...new Map(selectedMatches.map((match) => [
