@@ -178,13 +178,26 @@ export default async function ask(req: Request): Promise<Response> {
     if (namedCandidateSources.length > 1) {
       for (const source of namedCandidateSources) {
         if (matches.some((match) => match.source === source)) continue;
-        const { data: candidateRows, error: comparisonError } = await client.database
+        let candidateQuery = client.database
           .from("documents")
           .select("id, content, source, chunk_index, page_start, page_end")
           .eq("source", source)
+          .ilike("content", "%movil%")
           .order("chunk_index", { ascending: true })
-          .limit(4);
+          .limit(6);
+        let { data: candidateRows, error: comparisonError } = await candidateQuery;
         if (comparisonError) throw comparisonError;
+        if (!candidateRows?.length) {
+          const fallback = await client.database
+            .from("documents")
+            .select("id, content, source, chunk_index, page_start, page_end")
+            .eq("source", source)
+            .order("chunk_index", { ascending: true })
+            .limit(4);
+          candidateRows = fallback.data;
+          comparisonError = fallback.error;
+          if (comparisonError) throw comparisonError;
+        }
         matches.push(...(candidateRows ?? []).map((row) => ({ ...row, similarity: 0.3 })));
       }
     }
