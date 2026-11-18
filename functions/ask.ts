@@ -320,9 +320,17 @@ export default async function ask(req: Request): Promise<Response> {
     if (!completionResponse.ok) throw new Error(completion?.error ?? `Remote chat failed (${completionResponse.status})`);
 
     const candidateAnswer = typeof completion.answer === "string" ? completion.answer.trim() : "";
-    const answer = /^no tengo esa información en mis documentos[.!]?$/i.test(candidateAnswer)
+    const cleanedAnswer = globalQuestion
+      ? candidateAnswer
+        .split("\n")
+        .filter((line) => !/no tengo esa información en mis documentos|no se menciona en el texto proporcionado/i.test(line))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+      : candidateAnswer;
+    const answer = /^no tengo esa información en mis documentos[.!]?$/i.test(cleanedAnswer)
       ? noInformation
-      : candidateAnswer || noInformation;
+      : cleanedAnswer || noInformation;
     const answerNormalized = answer.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const visibleSources = answer === noInformation
       ? []
