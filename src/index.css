@@ -323,7 +323,7 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 8px 0 24px;
+  padding: 8px 0 32px;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
@@ -392,8 +392,9 @@ textarea {
 .bubble p { margin: 0 0 .75rem; white-space: pre-wrap; }
 .bubble p:last-child { margin-bottom: 0; }
 .answer-table-wrap { max-width: 100%; overflow-x: auto; margin: .35rem 0 .9rem; border: 1px solid var(--border); border-radius: 12px; }
-.answer-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: .92rem; text-align: left; }
+.answer-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: .92rem; text-align: left; table-layout: auto; }
 .answer-table th, .answer-table td { padding: .65rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.answer-table td { white-space: normal; overflow-wrap: anywhere; }
 .answer-table th { background: color-mix(in srgb, var(--surface-strong) 75%, transparent); font-weight: 700; white-space: nowrap; }
 .answer-table tr:last-child td { border-bottom: 0; }
 .message-body { min-width: 0; max-width: 85%; }
@@ -421,6 +422,10 @@ textarea {
   width: min(768px, calc(100% - 24px));
   margin: 0 auto 12px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+  padding-top: 8px;
+  background: linear-gradient(to bottom, transparent, var(--main) 18%);
 }
 
 .older-messages {
