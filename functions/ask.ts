@@ -173,6 +173,21 @@ export default async function ask(req: Request): Promise<Response> {
         matches.push({ id: row.id, content: row.content, source: row.source, similarity: row.lexicalScore });
       }
     }
+    // Comparisons must retain evidence for every named candidate, even when
+    // embeddings or OCR fail to rank one of the documents highly enough.
+    if (namedCandidateSources.length > 1) {
+      for (const source of namedCandidateSources) {
+        if (matches.some((match) => match.source === source)) continue;
+        const { data: candidateRows, error: comparisonError } = await client.database
+          .from("documents")
+          .select("id, content, source, chunk_index, page_start, page_end")
+          .eq("source", source)
+          .order("chunk_index", { ascending: true })
+          .limit(4);
+        if (comparisonError) throw comparisonError;
+        matches.push(...(candidateRows ?? []).map((row) => ({ ...row, similarity: 0.3 })));
+      }
+    }
     // If a candidate was named but neither semantic nor lexical search found
     // a hit, keep the query inside that candidate's document instead of
     // borrowing fragments from unrelated proposals.
