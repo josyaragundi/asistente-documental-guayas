@@ -1,6 +1,36 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MenuIcon, PlusIcon, SendIcon } from "./icons.jsx";
 
+function renderAssistantText(text) {
+  const lines = String(text || "").split("\n");
+  const blocks = [];
+  let table = [];
+  const flushTable = () => {
+    if (!table.length) return;
+    const rows = table.map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
+    const header = rows[0];
+    const body = rows.filter((row, index) => index > 1 && row.some(Boolean));
+    blocks.push(
+      <div className="answer-table-wrap" key={`table-${blocks.length}`}>
+        <table className="answer-table"><thead><tr>{header.map((cell, index) => <th key={index}>{cell}</th>)}</tr></thead>
+          <tbody>{body.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, index) => <td key={index}>{cell}</td>)}</tr>)}</tbody>
+        </table>
+      </div>,
+    );
+    table = [];
+  };
+  for (const line of lines) {
+    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      table.push(line.trim());
+    } else {
+      flushTable();
+      if (line.trim()) blocks.push(<p key={`line-${blocks.length}`}>{line}</p>);
+    }
+  }
+  flushTable();
+  return blocks;
+}
+
 export default function ChatMain({
   chat,
   prompt,
@@ -189,7 +219,7 @@ export default function ChatMain({
           messages.map((message, index) => (
             <article className={`message ${message.role}`} key={message.id ?? `${message.role}-${index}`}>
               {message.role === "assistant" ? <span className="avatar bot">✦</span> : <span className="avatar user-avatar">{initial}</span>}
-              <div className="message-body"><div className="bubble">{message.text}</div>{message.role === "assistant" && <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button>}</div>
+              <div className="message-body"><div className="bubble">{message.role === "assistant" ? renderAssistantText(message.text) : message.text}</div>{message.role === "assistant" && <button className="message-action" type="button" onClick={() => copyMessage(message)}>{copiedId === message.id ? "Copiado" : "Copiar"}</button>}</div>
             </article>
           ))
         )}
