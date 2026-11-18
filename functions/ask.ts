@@ -146,11 +146,13 @@ export default async function ask(req: Request): Promise<Response> {
     }
     const globalQuestion = /\b(todo|todos|todas|cada|compar|diferencia|diferencias|propuestas|candidatos|candidatas|en general|global|movilidad|seguridad|agua potable|desarrollo)\b/i.test(normalizedQuestion);
 
-    const stopwords = new Set(["segun", "documento", "candidata", "candidato", "cual", "cuales", "como", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di", "quien", "aparece"]);
-    const terms = [...new Set(normalizedQuestion.match(/[a-z]{5,}/g) ?? [])]
+    const stopwords = new Set(["segun", "documento", "candidata", "candidato", "cual", "cuales", "como", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di", "quien", "aparece", "propone", "propuesta", "propuestas"]);
+    // Include four-letter topical terms (red, vial, agua, plan, etc.); they
+    // are often the decisive words in short questions about OCR documents.
+    const terms = [...new Set(normalizedQuestion.match(/[a-z]{4,}/g) ?? [])]
       .filter((term) => !stopwords.has(term))
       .sort((a, b) => b.length - a.length)
-      .slice(0, 4);
+      .slice(0, 6);
     const lexicalResults = await Promise.all(terms.map(async (term) => {
       let lexicalQuery = client.database
         .from("documents")
@@ -220,7 +222,7 @@ export default async function ask(req: Request): Promise<Response> {
       // candidate-scoped questions can use a larger context safely.
       // Candidate-scoped questions only need the most relevant passages.
       // A smaller context avoids gateway timeouts and cross-topic noise.
-      .slice(0, candidateSource ? 6 : 8);
+      .slice(0, candidateSource ? 8 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     const sources = [...new Map(selectedMatches.map((match) => [
