@@ -37,6 +37,7 @@ export default function ChatMain({
   notice,
   error,
   loading,
+  sendingMessage,
   onPromptChange,
   onSubmit,
   onUploadPdf,
@@ -111,6 +112,7 @@ export default function ChatMain({
   }
 
   function submitMessage() {
+    if (sendingMessage) return;
     stickToBottomRef.current = true;
     setShowJumpToLatest(false);
     const thread = threadRef.current;
@@ -235,6 +237,7 @@ export default function ChatMain({
         )}
         <form
           className="composer"
+          aria-busy={sendingMessage}
           onSubmit={(event) => {
             event.preventDefault();
             submitMessage();
@@ -267,15 +270,16 @@ export default function ChatMain({
             placeholder="Pregunta lo que quieras"
             autoComplete="off"
             value={prompt}
+            disabled={sendingMessage}
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <button className={`voice-btn${listening ? " listening" : ""}`} type="button" title="Dictar pregunta" onClick={startVoice} aria-label="Dictar pregunta">{listening ? "●" : "🎙"}</button>
+          <button className={`voice-btn${listening ? " listening" : ""}`} type="button" title="Dictar pregunta" onClick={startVoice} aria-label="Dictar pregunta" disabled={sendingMessage}>{listening ? "●" : "🎙"}</button>
           <button
             className="send"
             type="submit"
             aria-label="Enviar"
-            disabled={prompt.trim() === ""}
+            disabled={sendingMessage || prompt.trim() === ""}
           >
             <SendIcon />
           </button>

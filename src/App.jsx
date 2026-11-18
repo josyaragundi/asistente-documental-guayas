@@ -33,6 +33,7 @@ export default function App() {
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [loadingActiveMessages, setLoadingActiveMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -248,7 +249,8 @@ export default function App() {
 
   async function sendMessage() {
     const text = prompt.trim();
-    if (!text || !insforge || !user) return;
+    if (sendingMessage || !text || !insforge || !user) return;
+    setSendingMessage(true);
     setError("");
     setNotice("");
     try {
@@ -342,6 +344,8 @@ export default function App() {
       ));
     } catch (sendError) {
       setError(`El mensaje quedó guardado, pero no se pudo generar la respuesta: ${sendError.message}`);
+    } finally {
+      setSendingMessage(false);
     }
   }
 
@@ -477,6 +481,7 @@ export default function App() {
         notice={notice}
         error={error}
         loading={loadingChats}
+        sendingMessage={sendingMessage}
         uploading={uploading}
         isAdmin={isAdmin}
         user={user}
