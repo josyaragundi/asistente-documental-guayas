@@ -149,8 +149,13 @@ export default async function ask(req: Request): Promise<Response> {
     const stopwords = new Set(["segun", "documento", "candidata", "candidato", "cual", "cuales", "como", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di", "quien", "aparece", "propone", "propuesta", "propuestas"]);
     // Include four-letter topical terms (red, vial, agua, plan, etc.); they
     // are often the decisive words in short questions about OCR documents.
-    const terms = [...new Set(normalizedQuestion.match(/[a-z]{4,}/g) ?? [])]
-      .filter((term) => !stopwords.has(term))
+    const candidateNameWords = new Set(
+      candidateSources
+        .filter(([, source]) => namedCandidateSources.includes(source))
+        .flatMap(([aliases]) => aliases.flatMap((alias) => alias.split(" "))),
+    );
+    const terms = [...new Set(normalizedQuestion.match(/[a-z]{3,}/g) ?? [])]
+      .filter((term) => !stopwords.has(term) && !candidateNameWords.has(term))
       .sort((a, b) => b.length - a.length)
       .slice(0, 4);
     const lexicalResults = await Promise.all(terms.map(async (term) => {
