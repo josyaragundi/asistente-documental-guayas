@@ -277,9 +277,15 @@ export default async function ask(req: Request): Promise<Response> {
     const answer = /^no tengo esa información en mis documentos[.!]?$/i.test(candidateAnswer)
       ? noInformation
       : candidateAnswer || noInformation;
+    const answerNormalized = answer.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const visibleSources = answer === noInformation
+      ? []
+      : globalQuestion
+        ? sources.filter((item) => candidateSources.some(([aliases, source]) => source === item.source && aliases.some((alias) => answerNormalized.includes(alias))))
+        : sources;
     return jsonResponse({
       answer,
-      sources,
+      sources: visibleSources,
       retrievedChunks: selectedMatches.length,
       model: completion.model,
     });
