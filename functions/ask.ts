@@ -96,7 +96,7 @@ export default async function ask(req: Request): Promise<Response> {
     const candidateSource = candidateSources.find(([aliases]) => aliases.some((alias) => normalizedQuestion.includes(alias)))?.[1] ?? null;
     if (candidateSource) matches = matches.filter((match) => match.source === candidateSource);
 
-    const stopwords = new Set(["según", "documento", "candidata", "candidato", "cuál", "cuales", "cómo", "como", "qué", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di", "quien", "quién", "aparece"]);
+    const stopwords = new Set(["segun", "documento", "candidata", "candidato", "cual", "cuales", "como", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di", "quien", "aparece"]);
     const terms = [...new Set(normalizedQuestion.match(/[a-z]{5,}/g) ?? [])]
       .filter((term) => !stopwords.has(term))
       .sort((a, b) => b.length - a.length)
@@ -107,7 +107,7 @@ export default async function ask(req: Request): Promise<Response> {
         .select("id, content, source, chunk_index")
         .ilike("content", `%${term}%`);
       if (candidateSource) lexicalQuery = lexicalQuery.eq("source", candidateSource);
-      const { data: rows, error: lexicalError } = await lexicalQuery.limit(12);
+      const { data: rows, error: lexicalError } = await lexicalQuery.limit(candidateSource ? 50 : 12);
       if (lexicalError) throw lexicalError;
       return (rows ?? []).map((row) => {
         const lowerContent = String(row.content || "").toLocaleLowerCase("es");
@@ -138,7 +138,7 @@ export default async function ask(req: Request): Promise<Response> {
     }
     const selectedMatches = matches
       .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 8);
+      .slice(0, candidateSource ? 12 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     const sources = [...new Map(selectedMatches.map((match) => [
