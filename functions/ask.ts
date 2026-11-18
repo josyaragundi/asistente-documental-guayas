@@ -152,7 +152,7 @@ export default async function ask(req: Request): Promise<Response> {
     const terms = [...new Set(normalizedQuestion.match(/[a-z]{4,}/g) ?? [])]
       .filter((term) => !stopwords.has(term))
       .sort((a, b) => b.length - a.length)
-      .slice(0, 6);
+      .slice(0, 4);
     const lexicalResults = await Promise.all(terms.map(async (term) => {
       let lexicalQuery = client.database
         .from("documents")
