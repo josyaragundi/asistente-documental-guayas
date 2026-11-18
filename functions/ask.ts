@@ -30,6 +30,18 @@ function appendWithoutOverlap(current: string, next: string, maxOverlap = 80): s
   return [...currentWords, ...nextWords.slice(overlap)].join(" ");
 }
 
+function pageRange(matches: Array<{ page_start?: number | null; page_end?: number | null }>): string | null {
+  const pages = matches.flatMap((match) => {
+    const start = Number(match.page_start);
+    const end = Number(match.page_end ?? match.page_start);
+    return Number.isInteger(start) && start > 0 ? [start, Number.isInteger(end) && end >= start ? end : start] : [];
+  });
+  if (!pages.length) return null;
+  const start = Math.min(...pages.filter((_, index) => index % 2 === 0));
+  const end = Math.max(...pages.filter((_, index) => index % 2 === 1));
+  return start === end ? String(start) : `${start}-${end}`;
+}
+
 export default async function ask(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -82,6 +94,9 @@ export default async function ask(req: Request): Promise<Response> {
       content: string;
       source: string;
       similarity: number;
+      page_start?: number | null;
+      page_end?: number | null;
+      chunk_index?: number;
     }>;
     // Recuperación léxica de respaldo para encabezados, numerales, nombres y
     // cifras que pueden quedar mal representados por un OCR o una pregunta
@@ -104,7 +119,7 @@ export default async function ask(req: Request): Promise<Response> {
     const lexicalResults = await Promise.all(terms.map(async (term) => {
       let lexicalQuery = client.database
         .from("documents")
-        .select("id, content, source, chunk_index")
+        .select("id, content, source, chunk_index, page_start, page_end")
         .ilike("content", `%${term}%`);
       if (candidateSource) lexicalQuery = lexicalQuery.eq("source", candidateSource);
       const { data: rows, error: lexicalError } = await lexicalQuery.limit(candidateSource ? 50 : 12);
@@ -143,7 +158,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     const sources = [...new Map(selectedMatches.map((match) => [
       match.source,
-      { source: match.source, score: Number(match.similarity.toFixed(4)) },
+      { source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageRange(selectedMatches.filter((item) => item.source === match.source)) },
     ])).values()];
 
     // For article-number questions, quote that article directly when retrieval
@@ -208,7 +223,7 @@ export default async function ask(req: Request): Promise<Response> {
     }
 
     const context = selectedMatches
-      .map((match, index) => `[${index + 1}] Fuente: ${match.source}\n${match.content}`)
+      .map((match, index) => `[${index + 1}] Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${match.content}`)
       .join("\n\n---\n\n");
     const completionResponse = await fetch(aiUrl, {
       method: "POST",

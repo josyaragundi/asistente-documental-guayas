@@ -301,7 +301,10 @@ export default function App() {
       if (ragError) throw ragError;
 
       const citations = (ragResult?.sources ?? [])
-        .map((item) => item.score == null ? `- ${item.source}` : `- ${item.source} (${item.score})`)
+        .map((item) => {
+          const pages = item.pages ? ` — página${String(item.pages).includes("-") ? "s" : ""} ${item.pages}` : "";
+          return item.score == null ? `- ${item.source}${pages}` : `- ${item.source}${pages} (${item.score})`;
+        })
         .join("\n");
       const assistantText = citations
         ? `${ragResult.answer}\n\nFuentes:\n${citations}`
