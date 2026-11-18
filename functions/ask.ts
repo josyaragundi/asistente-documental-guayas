@@ -77,7 +77,7 @@ export default async function ask(req: Request): Promise<Response> {
     });
     if (error) throw error;
 
-    const matches = (data ?? []) as Array<{
+    let matches = (data ?? []) as Array<{
       id: string;
       content: string;
       source: string;
@@ -86,17 +86,28 @@ export default async function ask(req: Request): Promise<Response> {
     // Recuperación léxica de respaldo para encabezados, numerales, nombres y
     // cifras que pueden quedar mal representados por un OCR o una pregunta
     // formulada con términos exactos del documento.
-    const stopwords = new Set(["según", "documento", "candidata", "candidato", "cuál", "cuales", "cómo", "como", "qué", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di"]);
-    const terms = [...new Set(question.toLocaleLowerCase("es").match(/[a-záéíóúüñ]{5,}/giu) ?? [])]
+    const normalizedQuestion = question.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const candidateSources: Array<[string[], string]> = [
+      [["perez roca", "perezroca", "perez", "roca"], "Guayas__Prefectura__PerezRoca.pdf"],
+      [["maria isabel zambrano", "maria isabel", "zambrano"], "Duran__Alcaldia__Maria_Isabel_Zambrano.pdf"],
+      [["cali", "hector rolando", "rolando cali", "cali macias"], "Guayas__Prefectura__Cali.pdf"],
+      [["gonzalez alcivar", "gonzalez", "alcivar"], "Guayas__Prefectura__GonzalezAlcivar.pdf"],
+    ];
+    const candidateSource = candidateSources.find(([aliases]) => aliases.some((alias) => normalizedQuestion.includes(alias)))?.[1] ?? null;
+    if (candidateSource) matches = matches.filter((match) => match.source === candidateSource);
+
+    const stopwords = new Set(["según", "documento", "candidata", "candidato", "cuál", "cuales", "cómo", "como", "qué", "que", "del", "de", "la", "el", "los", "las", "una", "uno", "por", "para", "con", "sobre", "dime", "di", "quien", "quién", "aparece"]);
+    const terms = [...new Set(normalizedQuestion.match(/[a-z]{5,}/g) ?? [])]
       .filter((term) => !stopwords.has(term))
       .sort((a, b) => b.length - a.length)
       .slice(0, 4);
     const lexicalResults = await Promise.all(terms.map(async (term) => {
-      const { data: rows, error: lexicalError } = await client.database
+      let lexicalQuery = client.database
         .from("documents")
         .select("id, content, source, chunk_index")
-        .ilike("content", `%${term}%`)
-        .limit(10);
+        .ilike("content", `%${term}%`);
+      if (candidateSource) lexicalQuery = lexicalQuery.eq("source", candidateSource);
+      const { data: rows, error: lexicalError } = await lexicalQuery.limit(12);
       if (lexicalError) throw lexicalError;
       return (rows ?? []).map((row) => {
         const lowerContent = String(row.content || "").toLocaleLowerCase("es");
@@ -111,6 +122,19 @@ export default async function ask(req: Request): Promise<Response> {
       } else if (row.lexicalScore >= 0.38) {
         matches.push({ id: row.id, content: row.content, source: row.source, similarity: row.lexicalScore });
       }
+    }
+    // If a candidate was named but neither semantic nor lexical search found
+    // a hit, keep the query inside that candidate's document instead of
+    // borrowing fragments from unrelated proposals.
+    if (candidateSource && matches.length === 0) {
+      const { data: candidateRows, error: candidateError } = await client.database
+        .from("documents")
+        .select("id, content, source, chunk_index")
+        .eq("source", candidateSource)
+        .order("chunk_index", { ascending: true })
+        .limit(8);
+      if (candidateError) throw candidateError;
+      matches = (candidateRows ?? []).map((row) => ({ ...row, similarity: 0.3 }));
     }
     const selectedMatches = matches
       .sort((a, b) => b.similarity - a.similarity)
