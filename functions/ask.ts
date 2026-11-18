@@ -175,7 +175,9 @@ export default async function ask(req: Request): Promise<Response> {
     }
     const selectedMatches = matches
       .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, candidateSource ? 12 : globalQuestion ? 16 : 8);
+      // Global comparisons must stay small enough for the gateway timeout;
+      // candidate-scoped questions can use a larger context safely.
+      .slice(0, candidateSource ? 12 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     const sources = [...new Map(selectedMatches.map((match) => [
