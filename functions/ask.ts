@@ -293,7 +293,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     const selectedMatches = matches
       .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, globalQuestion && namedCandidateSources.length === 0 ? 25 : 8);
+      .slice(0, globalQuestion && namedCandidateSources.length === 0 ? 25 : candidateSource ? 4 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     // Prioriza el fragmento con mayor coincidencia de términos y similitud por
@@ -457,9 +457,13 @@ export default async function ask(req: Request): Promise<Response> {
         .replace(/\n{3,}/g, "\n\n")
         .trim()
       : candidateAnswer;
-    const answer = /^(no tengo esa información en mis documentos|no se encuentra evidencia registrada en los planes de trabajo analizados para responder con precisión a esta consulta)[.!]?$/i.test(cleanedAnswer)
+    let answer = /^(no tengo esa información en mis documentos|no se encuentra evidencia registrada en los planes de trabajo analizados para responder con precisión a esta consulta)[.!]?$/i.test(cleanedAnswer)
       ? noInformation
       : cleanedAnswer || noInformation;
+    const groundingWarning = answer.toLocaleLowerCase("es");
+    if (groundingWarning.includes("se puede inferir") || groundingWarning.includes("se puede deducir") || groundingWarning.includes("no se encuentra explícitamente")) {
+      answer = noInformation;
+    }
     const answerNormalized = answer.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const visibleSources = answer === noInformation
       ? []
