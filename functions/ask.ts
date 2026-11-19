@@ -137,7 +137,13 @@ export default async function ask(req: Request): Promise<Response> {
     const listingIntent = /\b(lista|listar|nombres|quienes|quiénes|cuantos|cuántos|candidatos|planes registrados|planes cargados)\b/i.test(normalizedQuestion)
       && !/\bpropone|propuesta|compar|diferencia|movilidad|seguridad|agua|vialidad|riego\b/i.test(normalizedQuestion);
     if (listingIntent) {
-      const listedSources = [...new Set(candidateSources.map(([, source]) => source))];
+      const { data: documentRows, error: listingError } = await client.database
+        .from("documents")
+        .select("source")
+        .limit(5000);
+      if (listingError) throw listingError;
+      const listedSources = [...new Set((documentRows ?? []).map((row) => String(row.source || "")).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "es"));
       const answer = listedSources
         .map((source, index) => `${index + 1}. ${source.replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ")}`)
         .join("\n");
