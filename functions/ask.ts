@@ -269,6 +269,32 @@ export default async function ask(req: Request): Promise<Response> {
       .slice(0, globalQuestion && namedCandidateSources.length === 0 ? 25 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
+    // A broad thematic query across every document should not wait for one
+    // large gateway completion. Return grounded excerpts directly instead.
+    if (globalQuestion && namedCandidateSources.length === 0 && terms.length > 0) {
+      const globalRows = [...new Map(
+        selectedMatches
+          .filter((match) => terms.some((term) => String(match.content || "").toLocaleLowerCase("es").includes(term)) || match.similarity >= 0.48)
+          .map((match) => [match.source, match]),
+      ).values()];
+      if (globalRows.length > 0) {
+        const table = [
+          "| Candidato/Fuente | Evidencia recuperada | Página |",
+          "| --- | --- | --- |",
+          ...globalRows.map((match) => {
+            const excerpt = String(match.content || "").replace(/\s+/g, " ").slice(0, 420).replaceAll("|", "¦");
+            return `| ${match.source.replace(/\.pdf$/i, "")} | ${excerpt} | ${pageRange([match]) ?? "—"} |`;
+          }),
+        ].join("\n");
+        return jsonResponse({
+          answer: `Resultados documentales para la consulta global:\n\n${table}`,
+          sources: globalRows.map((match) => ({ source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageRange([match]) })),
+          retrievedChunks: globalRows.length,
+          model: "extractive-global",
+        });
+      }
+    }
+
     const sources = [...new Map(selectedMatches.map((match) => [
       match.source,
       { source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageRange(selectedMatches.filter((item) => item.source === match.source)) },
