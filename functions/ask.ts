@@ -180,6 +180,25 @@ export default async function ask(req: Request): Promise<Response> {
         matches.push({ id: row.id, content: row.content, source: row.source, similarity: row.lexicalScore });
       }
     }
+    // Global queries need source coverage, not only the top eight nearest
+    // chunks. Add one relevant passage per indexed candidate, then let the
+    // model omit candidates that have no evidence for the requested topic.
+    if (globalQuestion && namedCandidateSources.length === 0) {
+      const allSources = [...new Set(candidateSources.map(([, source]) => source))];
+      const { data: coverageRows, error: coverageError } = await client.database
+        .from("documents")
+        .select("id, content, source, chunk_index, page_start, page_end")
+        .in("source", allSources)
+        .order("chunk_index", { ascending: true })
+        .limit(300);
+      if (coverageError) throw coverageError;
+      const bySource = new Map<string, typeof matches[number]>();
+      for (const match of matches) if (!bySource.has(match.source)) bySource.set(match.source, match);
+      for (const row of coverageRows ?? []) {
+        if (!bySource.has(row.source)) bySource.set(row.source, { ...row, similarity: 0.3 });
+      }
+      matches = [...bySource.values()];
+    }
     // Comparisons must retain evidence for every named candidate, even when
     // embeddings or OCR fail to rank one of the documents highly enough.
     if (namedCandidateSources.length > 1) {
@@ -227,7 +246,7 @@ export default async function ask(req: Request): Promise<Response> {
       // candidate-scoped questions can use a larger context safely.
       // Candidate-scoped questions only need the most relevant passages.
       // A smaller context avoids gateway timeouts and cross-topic noise.
-      .slice(0, candidateSource ? 8 : 8);
+      .slice(0, globalQuestion && namedCandidateSources.length === 0 ? 25 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     const sources = [...new Map(selectedMatches.map((match) => [
@@ -298,7 +317,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     const groupedContext = globalQuestion
       ? [...new Map(selectedMatches.map((match) => [match.source, selectedMatches.filter((item) => item.source === match.source)])).values()]
-        .map((group) => group.map((match) => `Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${match.content}`).join("\n")).join("\n\n--- CANDIDATO / FUENTE ---\n\n")
+        .map((group) => group.map((match) => `Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${String(match.content).slice(0, 1800)}`).join("\n")).join("\n\n--- CANDIDATO / FUENTE ---\n\n")
       : selectedMatches
         .map((match) => `Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${match.content}`)
         .join("\n\n---\n\n");
