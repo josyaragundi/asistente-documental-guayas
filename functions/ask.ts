@@ -340,6 +340,23 @@ export default async function ask(req: Request): Promise<Response> {
       }
     }
 
+    // Las preguntas generales de un solo candidato no necesitan una
+    // generación extensa. Devolver evidencia breve y trazable evita que el
+    // gateway alcance el límite de 30 s en documentos OCR largos.
+    if (candidateSource && /\b(que propone|que plantea)\b/i.test(normalizedQuestion)) {
+      const excerpts = selectedMatches.slice(0, 3).map((match) =>
+        String(match.content || "").replace(/\s+/g, " ").trim().slice(0, 900),
+      ).filter(Boolean);
+      if (excerpts.length) {
+        return jsonResponse({
+          answer: `Evidencia recuperada del plan de ${candidateSource.replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ")}:\n\n${excerpts.map((excerpt, index) => `[${index + 1}] ${excerpt}`).join("\n\n")}`,
+          sources: [{ source: candidateSource, score: Number(selectedMatches[0].similarity.toFixed(4)), pages: pageRange(selectedMatches) }],
+          retrievedChunks: selectedMatches.length,
+          model: "extractive-candidate",
+        });
+      }
+    }
+
     const sources = [...new Map(selectedMatches.map((match) => [
       match.source,
       { source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageRange(selectedMatches.filter((item) => item.source === match.source)) },
@@ -439,6 +456,7 @@ export default async function ask(req: Request): Promise<Response> {
       headers: { "Authorization": `Bearer ${aiToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         task: "chat",
+        max_tokens: 600,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `CONTEXTO:\n${context}\n\nPREGUNTA:\n${question}` },
