@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthScreen from "./AuthScreen.jsx";
 import ChatMain from "./ChatMain.jsx";
 import AdminDocuments from "./AdminDocuments.jsx";
@@ -36,6 +36,8 @@ export default function App() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const sendingRef = useRef(false);
+  const requestSequenceRef = useRef(0);
 
   const activeChat = useMemo(
     () => chats.find((chat) => chat.id === activeId) ?? null,
@@ -229,6 +231,9 @@ export default function App() {
   }
 
   function createChat() {
+    requestSequenceRef.current += 1;
+    sendingRef.current = false;
+    setSendingMessage(false);
     setActiveId(null);
     setHasOlderMessages(false);
     setPrompt("");
@@ -238,6 +243,9 @@ export default function App() {
   }
 
   function selectChat(id) {
+    requestSequenceRef.current += 1;
+    sendingRef.current = false;
+    setSendingMessage(false);
     setActiveId(id);
     setPrompt("");
     setNotice("");
@@ -249,7 +257,9 @@ export default function App() {
 
   async function sendMessage() {
     const text = prompt.trim();
-    if (sendingMessage || !text || !insforge || !user) return;
+    if (sendingRef.current || !text || !insforge || !user) return;
+    sendingRef.current = true;
+    const requestId = ++requestSequenceRef.current;
     setSendingMessage(true);
     setError("");
     setNotice("");
@@ -298,9 +308,10 @@ export default function App() {
       if (touchError) throw touchError;
 
       const { data: ragResult, error: ragError } = await insforge.functions.invoke("ask", {
-        body: { question: text },
+        body: { question: text, clientRequestId: requestId },
       });
       if (ragError) throw ragError;
+      if (requestId !== requestSequenceRef.current) return;
 
       const citations = (ragResult?.sources ?? [])
         .map((item) => {
@@ -343,9 +354,14 @@ export default function App() {
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       ));
     } catch (sendError) {
-      setError(`El mensaje quedó guardado, pero no se pudo generar la respuesta: ${sendError.message}`);
+      if (requestId === requestSequenceRef.current) {
+        setError(`El mensaje quedó guardado, pero no se pudo generar la respuesta: ${sendError.message}`);
+      }
     } finally {
-      setSendingMessage(false);
+      if (requestId === requestSequenceRef.current) {
+        sendingRef.current = false;
+        setSendingMessage(false);
+      }
     }
   }
 
