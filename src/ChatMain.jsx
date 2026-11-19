@@ -226,6 +226,7 @@ export default function ChatMain({
           ))
         )}
         {error && <p className="chat-status error" role="alert">{error}</p>}
+        {sendingMessage && <p className="chat-status" role="status" aria-live="polite">Consultando los planes de trabajo…</p>}
         {notice && <p className="chat-status" role="status">{notice}</p>}
       </section>
 
