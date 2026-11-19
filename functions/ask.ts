@@ -134,6 +134,20 @@ export default async function ask(req: Request): Promise<Response> {
         .filter(([aliases]) => aliases.some((alias) => normalizedQuestion.includes(alias)))
         .map(([, source]) => source),
     )];
+    const listingIntent = /\b(lista|listar|nombres|quienes|quiénes|cuantos|cuántos|candidatos|planes registrados|planes cargados)\b/i.test(normalizedQuestion)
+      && !/\bpropone|propuesta|compar|diferencia|movilidad|seguridad|agua|vialidad|riego\b/i.test(normalizedQuestion);
+    if (listingIntent) {
+      const listedSources = [...new Set(candidateSources.map(([, source]) => source))];
+      const answer = listedSources
+        .map((source, index) => `${index + 1}. ${source.replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ")}`)
+        .join("\n");
+      return jsonResponse({
+        answer: `Candidatos y planes disponibles (${listedSources.length}):\n\n${answer}`,
+        sources: listedSources.map((source) => ({ source, score: null })),
+        retrievedChunks: listedSources.length,
+        model: "candidate-catalog",
+      });
+    }
     // One named candidate means a strict single-document query. When the
     // question names two or more candidates, keep all of those documents for
     // a real comparison instead of letting the last alias win.
@@ -317,7 +331,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     const groupedContext = globalQuestion
       ? [...new Map(selectedMatches.map((match) => [match.source, selectedMatches.filter((item) => item.source === match.source)])).values()]
-        .map((group) => group.map((match) => `Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${String(match.content).slice(0, 1100)}`).join("\n")).join("\n\n--- CANDIDATO / FUENTE ---\n\n")
+        .map((group) => group.map((match) => `Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${String(match.content).slice(0, 650)}`).join("\n")).join("\n\n--- CANDIDATO / FUENTE ---\n\n")
       : selectedMatches
         .map((match) => `Fuente: ${match.source}${pageRange([match]) ? ` (páginas ${pageRange([match])})` : ""}\n${match.content}`)
         .join("\n\n---\n\n");
