@@ -59,6 +59,8 @@ function readChatAnswer(payload: any): string {
 
 function cleanGeneratedAnswer(value: string): string {
   const cleaned = value
+    .replace(/\bPLAN\s+DE\s+TRABAJO\s+2027\s*[-–]\s*2031\b/gi, "")
+    .replace(/\bPREFECTURA\s+DEL\s+GUAYAS\b/gi, "")
     .replace(/(\[\d+\])(?:\s*\1)+/g, "$1")
     .replace(/(\[\d+\])\s+[\wÁÉÍÓÚÜÑáéíóúüñ.-]+(?:__[\wÁÉÍÓÚÜÑáéíóúüñ.-]+)+\.pdf(?:\s*\([^)]*\))?/g, "$1")
     .split("\n")
@@ -294,22 +296,9 @@ export default async function ask(req: Request): Promise<Response> {
       }
     }
 
-    if (globalQuestion && namedCandidateSources.length === 0) {
-      const allSources = [...new Set(candidateSources.map(([, source]) => source))];
-      const { data: coverageRows, error: coverageError } = await client.database
-        .from("documents")
-        .select("id, content, source, chunk_index, page_start, page_end")
-        .in("source", allSources)
-        .order("chunk_index", { ascending: true })
-        .limit(300);
-      if (coverageError) throw coverageError;
-      const bySource = new Map<string, typeof matches[number]>();
-      for (const match of matches) if (!bySource.has(match.source)) bySource.set(match.source, match);
-      for (const row of coverageRows ?? []) {
-        if (!bySource.has(row.source)) bySource.set(row.source, { ...row, similarity: 0.3 });
-      }
-      matches = [...bySource.values()];
-    }
+    // En consultas globales no añadimos automáticamente el primer fragmento de
+    // cada documento: suelen ser portadas, índices o encabezados OCR y
+    // contaminan la respuesta con candidatos sin evidencia sobre el tema.
 
     // Fallback de comparación: filtra primero por los términos relevantes de la
     // pregunta y solo recurre a los primeros chunks si no hay coincidencia léxica.
