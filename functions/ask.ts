@@ -442,11 +442,11 @@ export default async function ask(req: Request): Promise<Response> {
       "8. Cuando la consulta solicite propuestas, ejes, programas, planes de trabajo o una comparación de candidatos, responde con mayor detalle y estructura. Comienza con un párrafo introductorio breve de una o dos líneas que identifique al candidato, su organización política si aparece en CONTEXTO y la dignidad a la que postula.",
       "9. Después organiza la respuesta en viñetas claras con este formato: - **Nombre del eje o programa:** descripción concreta. Incluye todos los proyectos específicos, acciones, enfoques de implementación, metas al 2031, plazos como agendas de 100 días y cifras o indicadores que aparezcan textualmente en los fragmentos recuperados.",
       "10. Coloca la cita correspondiente al final de cada viñeta o afirmación relevante. No dupliques marcadores, no inventes cifras ni propuestas y no añadas líneas manuales de Fuente:. Si el contexto no detalla un dato solicitado, indícalo brevemente al final.",
-      "11. Cuando la consulta mencione o compare dos o más candidatos, organiza principalmente la respuesta en una tabla Markdown GFM con las columnas: | Eje / Tema | Candidato A (Organización) | Candidato B (Organización) |. Incluye en cada celda las propuestas concretas, metas o cifras encontradas y su cita [n]. Si falta evidencia de un candidato para un eje, escribe exactamente: Sin mención específica en los fragmentos analizados. Debajo añade dos o tres viñetas breves con las principales diferencias o coincidencias.",
-      "12. En consultas globales o transversales que involucren varios planes aunque no se mencionen candidatos por nombre, presenta primero una tabla Markdown con las columnas | Candidato / Fuente | Dignidad | Eje o problema | Propuesta o evidencia | Página |. Usa una fila por candidato y eje con evidencia, no mezcles propuestas de distintos candidatos en una misma oración y coloca [n] dentro de la celda o al final de la afirmación correspondiente. Después añade un resumen breve de coincidencias y diferencias.",
+      "11. Cuando la consulta mencione o compare dos o más candidatos, organiza principalmente la respuesta en una tabla Markdown GFM con exactamente las columnas: | Candidato | Propuesta | Página |. Incluye una fila por propuesta y usa el nombre completo real del candidato. No incluyas nombres técnicos de archivos, dignidades, organizaciones o encabezados como PLAN DE TRABAJO 2027-2031 en la columna Candidato. Si falta evidencia de un candidato, no inventes una fila. Debajo añade dos o tres viñetas breves con las principales diferencias o coincidencias.",
+      "12. En consultas globales o transversales que involucren varios planes aunque no se mencionen candidatos por nombre, presenta primero una tabla Markdown con exactamente estas columnas: | Candidato | Propuesta | Página |. En Candidato escribe únicamente el nombre completo real; nunca uses el nombre técnico del archivo, la dignidad ni el texto 'PLAN DE TRABAJO 2027-2031'. En Propuesta resume solo la evidencia recuperada y conserva la cita [n]. Usa una fila por candidato y propuesta con evidencia. Después añade un resumen breve de coincidencias y diferencias.",
       "Formato según intención:",
       "- Consulta de un solo candidato o dato puntual: responde de forma directa, técnica y concisa, indicando candidato/fuente, hallazgo y páginas.",
-      "- Comparación explícita entre 2 o más candidatos: responde con una tabla Markdown con las columnas | Candidato/Fuente | Propuesta o hallazgo | Página |. Incluye únicamente candidatos con evidencia explícita en CONTEXTO; no agregues filas sin evidencia ni escribas el mensaje de falta de evidencia dentro de la tabla.",
+      "- Comparación explícita entre 2 o más candidatos: responde con una tabla Markdown con exactamente las columnas | Candidato | Propuesta | Página |. En Candidato usa el nombre completo real, sin nombre de archivo, guiones bajos, dignidad ni encabezados como PLAN DE TRABAJO 2027-2031. Incluye únicamente candidatos con evidencia explícita en CONTEXTO; no agregues filas sin evidencia ni escribas el mensaje de falta de evidencia dentro de la tabla.",
       "- Resumen general: organiza con viñetas claras agrupadas por ejes o pilares temáticos presentes en CONTEXTO.",
       sourceRestriction,
     ].join(" ");
@@ -503,13 +503,15 @@ export default async function ask(req: Request): Promise<Response> {
         if (!bestBySource.has(match.source)) bestBySource.set(match.source, match);
       }
       const table = [
-        "| Candidato / Fuente | Dignidad | Eje o problema | Propuesta o evidencia | Página |",
-        "| --- | --- | --- | --- | --- |",
+        "| Candidato | Propuesta | Página |",
+        "| --- | --- | --- |",
         ...[...bestBySource.values()].map((match) => {
           const source = candidateLabel(match.source);
-          const dignity = source.startsWith("Guayas__Prefectura") ? "Prefectura del Guayas" : source.startsWith("Guayaquil__Alcaldia") ? "Alcaldía de Guayaquil" : "Alcaldía de Durán";
-          const excerpt = String(match.content || "").replace(/\s+/g, " ").slice(0, 700).replaceAll("|", "¦");
-          return `| ${source.replaceAll("__", " — ")} | ${dignity} | Evidencia recuperada | ${excerpt} [${selectedMatches.indexOf(match) + 1}] | ${pageCitation([match]) ?? "—"} |`;
+          const excerpt = String(match.content || "")
+            .replace(/PLAN\s+DE\s+TRABAJO[^.\n|]{0,180}/gi, "")
+            .replace(/PREFECTURA\s+DEL\s+GUAYAS|ALCALD[IÍ]A\s+DE\s+(?:GUAYAQUIL|DUR[AÁ]N)/gi, "")
+            .replace(/\s+/g, " ").trim().slice(0, 700).replaceAll("|", "¦");
+          return `| ${source} | ${excerpt} [${selectedMatches.indexOf(match) + 1}] | ${pageCitation([match]) ?? "—"} |`;
         }),
       ].join("\n");
       answer = `${table}\n\nResumen: ${answer}`;
