@@ -335,7 +335,9 @@ textarea {
 .thread::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 99px; }
 
 .empty {
-  height: 100%;
+  min-height: 100%;
+  height: auto;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   color: var(--text);
