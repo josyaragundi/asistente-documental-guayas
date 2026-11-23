@@ -26,6 +26,9 @@ export default { async fetch(request, env) {
     return json({ error: "task must be embed or chat" }, 400);
   } catch (error) {
     console.error("Workers AI request failed", error);
-    return json({ error: "Remote inference failed" }, 502);
+    return json({
+      error: "Remote inference failed",
+      detail: error instanceof Error ? error.message : "Unexpected Workers AI error",
+    }, 502);
   }
 } };

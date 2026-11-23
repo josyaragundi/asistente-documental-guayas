@@ -51,6 +51,15 @@ function readChatAnswer(payload: any): string {
   return typeof answer === "string" ? answer.trim() : "";
 }
 
+async function readRemoteJson(response: Response): Promise<any> {
+  const raw = await response.text();
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return { error: raw || `Remote service returned an empty response (${response.status})` };
+  }
+}
+
 export default async function ask(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -84,7 +93,7 @@ export default async function ask(req: Request): Promise<Response> {
       headers: { "Authorization": `Bearer ${aiToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ task: "embed", input: question, model: embeddingModel }),
     });
-    const embeddingResult = await embeddingResponse.json();
+    const embeddingResult = await readRemoteJson(embeddingResponse);
     if (!embeddingResponse.ok) throw new Error(embeddingResult?.error ?? `Remote embedding failed (${embeddingResponse.status})`);
     const queryEmbedding = embeddingResult?.embeddings?.[0];
     if (!Array.isArray(queryEmbedding) || queryEmbedding.length !== 1024) {
@@ -472,7 +481,7 @@ export default async function ask(req: Request): Promise<Response> {
         ],
       }),
     });
-    const completion = await completionResponse.json();
+    const completion = await readRemoteJson(completionResponse);
     if (!completionResponse.ok) throw new Error(completion?.error ?? `Remote chat failed (${completionResponse.status})`);
 
     const candidateAnswer = readChatAnswer(completion);

@@ -356,7 +356,13 @@ export default function App() {
       ));
     } catch (sendError) {
       if (requestId === requestSequenceRef.current) {
-        setError(`El mensaje quedó guardado, pero no se pudo generar la respuesta: ${sendError.message}`);
+        const errorDetail = sendError?.message
+          || sendError?.detail
+          || sendError?.error
+          || sendError?.data?.detail
+          || sendError?.data?.error
+          || (typeof sendError === "string" ? sendError : "Error desconocido al consultar el asistente");
+        setError(`El mensaje quedó guardado, pero no se pudo generar la respuesta: ${errorDetail}`);
       }
     } finally {
       if (requestId === requestSequenceRef.current) {
