@@ -78,6 +78,16 @@ async function readRemoteJson(response: Response): Promise<any> {
   }
 }
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("Remote inference timeout"), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function ask(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -106,11 +116,11 @@ export default async function ask(req: Request): Promise<Response> {
   if (question.length > 2_000) return jsonResponse({ error: "question exceeds the 2,000 character limit" }, 413);
 
   try {
-    const embeddingResponse = await fetch(aiUrl, {
+    const embeddingResponse = await fetchWithTimeout(aiUrl, {
       method: "POST",
       headers: { "Authorization": `Bearer ${aiToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ task: "embed", input: question, model: embeddingModel }),
-    });
+    }, 12000);
     const embeddingResult = await readRemoteJson(embeddingResponse);
     if (!embeddingResponse.ok) throw new Error(embeddingResult?.error ?? `Remote embedding failed (${embeddingResponse.status})`);
     const queryEmbedding = embeddingResult?.embeddings?.[0];
@@ -453,7 +463,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     let completion: any;
     try {
-      const completionResponse = await fetch(aiUrl, {
+      const completionResponse = await fetchWithTimeout(aiUrl, {
         method: "POST",
         headers: { "Authorization": `Bearer ${aiToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -464,7 +474,7 @@ export default async function ask(req: Request): Promise<Response> {
             { role: "user", content: `CONTEXTO:\n${context}\n\nPREGUNTA:\n${question}` },
           ],
         }),
-      });
+      }, 18000);
       completion = await readRemoteJson(completionResponse);
       if (!completionResponse.ok) throw new Error(completion?.error ?? `Remote chat failed (${completionResponse.status})`);
       if (!readChatAnswer(completion)) throw new Error("Remote chat returned an empty answer");

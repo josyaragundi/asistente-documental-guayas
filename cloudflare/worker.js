@@ -19,7 +19,7 @@ export default { async fetch(request, env) {
     }
     if (body.task === "chat") {
       if (!Array.isArray(body.messages) || !body.messages.length) return json({ error: "messages must be a non-empty array" }, 400);
-      const result = await env.AI.run(CHAT, { messages: body.messages, max_tokens: 1200, temperature: 0 });
+      const result = await env.AI.run(CHAT, { messages: body.messages, max_tokens: 600, temperature: 0 });
       if (typeof result?.response !== "string" || !result.response.trim()) return json({ error: "Empty model response" }, 502);
       return json({ model: CHAT, answer: result.response.trim() });
     }
