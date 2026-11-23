@@ -314,6 +314,25 @@ export default async function ask(req: Request): Promise<Response> {
 
         matches.push(...(candidateRows ?? []).map((row) => ({ ...row, similarity: 0.3 })));
       }
+
+      // Equilibra la recuperación: cada candidato nombrado aporta hasta cinco
+      // fragmentos, aunque el top global del vector favorezca a otro candidato.
+      const balancedMatches = await Promise.all(namedCandidateSources.map(async (source) => {
+        const current = matches.filter((match) => match.source === source);
+        const { data: sourceRows, error: sourceError } = await client.database
+          .from("documents")
+          .select("id, content, source, chunk_index, page_start, page_end")
+          .eq("source", source)
+          .order("chunk_index", { ascending: true })
+          .limit(5);
+        if (sourceError) throw sourceError;
+        const byId = new Map(current.map((match) => [match.id, match]));
+        for (const row of sourceRows ?? []) {
+          if (!byId.has(row.id)) byId.set(row.id, { ...row, similarity: 0.3 });
+        }
+        return [...byId.values()].sort((a, b) => b.similarity - a.similarity).slice(0, 5);
+      }));
+      matches = balancedMatches.flat();
     }
 
     if (candidateSource && matches.length === 0) {
@@ -329,7 +348,9 @@ export default async function ask(req: Request): Promise<Response> {
 
     const selectedMatches = matches
       .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, globalQuestion && namedCandidateSources.length === 0 ? 25 : candidateSource ? 4 : 8);
+      .slice(0, namedCandidateSources.length >= 2
+        ? namedCandidateSources.length * 5
+        : globalQuestion && namedCandidateSources.length === 0 ? 25 : candidateSource ? 4 : 8);
     if (selectedMatches.length === 0) return jsonResponse({ answer: noInformation, sources: [] });
 
     // Prioriza el fragmento con mayor coincidencia de términos y similitud por
@@ -394,6 +415,7 @@ export default async function ask(req: Request): Promise<Response> {
       "8. Cuando la consulta solicite propuestas, ejes, programas, planes de trabajo o una comparación de candidatos, responde con mayor detalle y estructura. Comienza con un párrafo introductorio breve de una o dos líneas que identifique al candidato, su organización política si aparece en CONTEXTO y la dignidad a la que postula.",
       "9. Después organiza la respuesta en viñetas claras con este formato: - **Nombre del eje o programa:** descripción concreta. Incluye todos los proyectos específicos, acciones, enfoques de implementación, metas al 2031, plazos como agendas de 100 días y cifras o indicadores que aparezcan textualmente en los fragmentos recuperados.",
       "10. Coloca la cita correspondiente al final de cada viñeta o afirmación relevante. No dupliques marcadores, no inventes cifras ni propuestas y no añadas líneas manuales de Fuente:. Si el contexto no detalla un dato solicitado, indícalo brevemente al final.",
+      "11. Cuando la consulta mencione o compare dos o más candidatos, organiza principalmente la respuesta en una tabla Markdown GFM con las columnas: | Eje / Tema | Candidato A (Organización) | Candidato B (Organización) |. Incluye en cada celda las propuestas concretas, metas o cifras encontradas y su cita [n]. Si falta evidencia de un candidato para un eje, escribe exactamente: Sin mención específica en los fragmentos analizados. Debajo añade dos o tres viñetas breves con las principales diferencias o coincidencias.",
       "Formato según intención:",
       "- Consulta de un solo candidato o dato puntual: responde de forma directa, técnica y concisa, indicando candidato/fuente, hallazgo y páginas.",
       "- Comparación explícita entre 2 o más candidatos: responde con una tabla Markdown con las columnas | Candidato/Fuente | Propuesta o hallazgo | Página |. Incluye únicamente candidatos con evidencia explícita en CONTEXTO; no agregues filas sin evidencia ni escribas el mensaje de falta de evidencia dentro de la tabla.",

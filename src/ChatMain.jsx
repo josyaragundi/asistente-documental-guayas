@@ -5,11 +5,14 @@ function renderAssistantText(text) {
   const lines = String(text || "").split("\n");
   const blocks = [];
   let table = [];
+  const isTableLine = (line) => /^\s*\|.*\|?\s*$/.test(line) && line.includes("|");
+  const parseTableRow = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+  const isSeparatorRow = (row) => row.length > 0 && row.every((cell) => /^:?-{3,}:?$/.test(cell));
   const flushTable = () => {
     if (!table.length) return;
-    const rows = table.map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
+    const rows = table.map(parseTableRow).filter((row) => row.length > 0 && !isSeparatorRow(row));
     const header = rows[0];
-    const body = rows.filter((row, index) => index > 1 && row.some(Boolean));
+    const body = rows.slice(1).filter((row) => row.some(Boolean));
     blocks.push(
       <div className="answer-table-wrap" key={`table-${blocks.length}`}>
         <table className="answer-table"><thead><tr>{header.map((cell, index) => <th key={index}>{cell}</th>)}</tr></thead>
@@ -20,7 +23,7 @@ function renderAssistantText(text) {
     table = [];
   };
   for (const line of lines) {
-    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+    if (isTableLine(line)) {
       table.push(line.trim());
     } else {
       flushTable();
