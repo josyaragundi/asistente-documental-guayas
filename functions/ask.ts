@@ -42,6 +42,15 @@ function pageRange(matches: Array<{ page_start?: number | null; page_end?: numbe
   return start === end ? String(start) : `${start}-${end}`;
 }
 
+function readChatAnswer(payload: any): string {
+  const answer = payload?.answer
+    ?? payload?.output
+    ?? payload?.text
+    ?? payload?.choices?.[0]?.message?.content
+    ?? payload?.choices?.[0]?.text;
+  return typeof answer === "string" ? answer.trim() : "";
+}
+
 export default async function ask(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -466,7 +475,7 @@ export default async function ask(req: Request): Promise<Response> {
     const completion = await completionResponse.json();
     if (!completionResponse.ok) throw new Error(completion?.error ?? `Remote chat failed (${completionResponse.status})`);
 
-    const candidateAnswer = typeof completion.answer === "string" ? completion.answer.trim() : "";
+    const candidateAnswer = readChatAnswer(completion);
     const cleanedAnswer = globalQuestion
       ? candidateAnswer
         .split("\n")
@@ -499,6 +508,9 @@ export default async function ask(req: Request): Promise<Response> {
     console.error("RAG ask failed:", error);
     const detail = error instanceof Error ? error.message : "Unexpected server error";
     console.error("RAG ask detail:", detail);
-    return jsonResponse({ error: "Question answering failed" }, 502);
+    return jsonResponse({
+      error: "Question answering failed",
+      detail,
+    }, 502);
   }
 }
