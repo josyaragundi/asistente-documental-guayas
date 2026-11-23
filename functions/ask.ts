@@ -58,13 +58,14 @@ function readChatAnswer(payload: any): string {
 }
 
 function cleanGeneratedAnswer(value: string): string {
-  return value
+  const cleaned = value
     .replace(/(\[\d+\])(?:\s*\1)+/g, "$1")
     .split("\n")
     .filter((line) => !/^\s*Fuentes?:\s*/i.test(line))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  return cleaned || value.trim() || noInformation;
 }
 
 async function readRemoteJson(response: Response): Promise<any> {
@@ -356,105 +357,14 @@ export default async function ask(req: Request): Promise<Response> {
         (match) => termHits(match.content) > 0 || match.similarity >= 0.48,
       );
 
-      if (globalRows.length > 0) {
-        const table = [
-          "| Candidato/Fuente | Evidencia recuperada | Página |",
-          "| --- | --- | --- |",
-          ...globalRows.map((match) => {
-            const excerpt = String(match.content || "").replace(/\s+/g, " ").slice(0, 650).replaceAll("|", "¦");
-            return `| ${match.source.replace(/\.pdf$/i, "")} | ${excerpt} | ${pageCitation([match]) ?? "—"} |`;
-          }),
-        ].join("\n");
-        return jsonResponse({
-          answer: `Resultados documentales para la consulta global:\n\n${table}`,
-          sources: globalRows.map((match) => ({ source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageCitation([match]) })),
-          retrievedChunks: globalRows.length,
-          model: "extractive-global",
-        });
-      }
-    }
-
-    // Las preguntas generales de un solo candidato no necesitan una
-    // generación extensa. Devolver evidencia breve y trazable evita que el
-    // gateway alcance el límite de 30 s en documentos OCR largos.
-    if (candidateSource && /\b(que propone|que plantea)\b/i.test(normalizedQuestion)) {
-      const excerpts = selectedMatches.slice(0, 3).map((match) =>
-        String(match.content || "").replace(/\s+/g, " ").trim().slice(0, 900),
-      ).filter(Boolean);
-      if (excerpts.length) {
-        return jsonResponse({
-          answer: `Evidencia recuperada del plan de ${candidateSource.replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ")}:\n\n${excerpts.map((excerpt, index) => `[${index + 1}] ${excerpt}`).join("\n\n")}`,
-          sources: [{ source: candidateSource, score: Number(selectedMatches[0].similarity.toFixed(4)), pages: pageCitation(selectedMatches) }],
-          retrievedChunks: selectedMatches.length,
-          model: "extractive-candidate",
-        });
-      }
+      // Conservamos la priorización por términos, pero dejamos que el modelo
+      // redacte la respuesta final a partir de estos fragmentos.
     }
 
     const sources = [...new Map(selectedMatches.map((match) => [
       match.source,
       { source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageCitation(selectedMatches.filter((item) => item.source === match.source)) },
     ])).values()];
-
-    const articleNumber = question.match(/\b(?:art(?:ículo)?\.?\s*)(\d{1,3})\b/i)?.[1];
-    if (articleNumber) {
-      const articleStart = new RegExp(`\\bArt(?:ículo)?\\.?\\s*${articleNumber}\\s*(?:\\.\\s*-|[\\-–:])\\s*`, "i");
-      let articleChunk = selectedMatches.find((match) => articleStart.test(match.content));
-      if (!articleChunk && selectedMatches[0]) {
-        const { data: exactArticleRows, error: articleError } = await client.database
-          .from("documents")
-          .select("id, document_id, content, source, chunk_index")
-          .eq("source", selectedMatches[0].source)
-          .ilike("content", `%Art. ${articleNumber}%`)
-          .order("chunk_index", { ascending: true })
-          .limit(5);
-        if (articleError) throw articleError;
-        articleChunk = (exactArticleRows ?? []).find((row) => articleStart.test(row.content));
-      }
-
-      if (articleChunk) {
-        const articleIndex = Math.max(0, selectedMatches.findIndex((match) => match.id === articleChunk.id));
-        let articleDocument = articleChunk.content;
-        const { data: articleMeta, error: metaError } = await client.database
-          .from("documents")
-          .select("document_id, chunk_index")
-          .eq("id", articleChunk.id)
-          .single();
-        if (metaError) throw metaError;
-        const { data: continuationRows, error: continuationError } = await client.database
-          .from("documents")
-          .select("content, chunk_index")
-          .eq("document_id", articleMeta.document_id)
-          .gt("chunk_index", articleMeta.chunk_index)
-          .order("chunk_index", { ascending: true })
-          .limit(3);
-        if (continuationError) throw continuationError;
-        for (const continuation of continuationRows ?? []) {
-          articleDocument = appendWithoutOverlap(articleDocument, continuation.content);
-          const articlePosition = articleStart.exec(articleDocument);
-          const currentRest = articleDocument.slice((articlePosition?.index ?? 0) + (articlePosition?.[0].length ?? 0));
-          if (/\bArt(?:ículo)?\.?\s*\d{1,3}\s*[.\-–:]/i.test(currentRest)) break;
-        }
-
-        const start = articleStart.exec(articleDocument);
-        const rest = articleDocument.slice((start?.index ?? 0) + (start?.[0].length ?? 0));
-        const nextArticle = rest.search(/\bArt(?:ículo)?\.?\s*\d{1,3}\s*[.\-–:]/i);
-        const articleText = rest.slice(0, nextArticle < 0 ? 2200 : nextArticle).trim();
-        if (articleText) {
-          const semanticMatch = selectedMatches.find((match) => match.id === articleChunk.id);
-          return jsonResponse({
-            answer: `El artículo ${articleNumber} establece: ${articleText} [${articleIndex + 1}]`,
-            sources: [{
-              source: articleChunk.source,
-              score: semanticMatch ? Number(semanticMatch.similarity.toFixed(4)) : null,
-              pages: pageCitation([articleChunk]),
-            }],
-            retrievedChunks: selectedMatches.length,
-            model: "extractive-article-match",
-          });
-        }
-      }
-    }
 
     const groupedContext = globalQuestion
       ? [...new Map(selectedMatches.map((match) => [match.source, selectedMatches.filter((item) => item.source === match.source)])).values()]
@@ -487,20 +397,36 @@ export default async function ask(req: Request): Promise<Response> {
       sourceRestriction,
     ].join(" ");
 
-    const completionResponse = await fetch(aiUrl, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${aiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        task: "chat",
-        max_tokens: 600,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `CONTEXTO:\n${context}\n\nPREGUNTA:\n${question}` },
-        ],
-      }),
-    });
-    const completion = await readRemoteJson(completionResponse);
-    if (!completionResponse.ok) throw new Error(completion?.error ?? `Remote chat failed (${completionResponse.status})`);
+    let completion: any;
+    try {
+      const completionResponse = await fetch(aiUrl, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${aiToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task: "chat",
+          max_tokens: 600,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `CONTEXTO:\n${context}\n\nPREGUNTA:\n${question}` },
+          ],
+        }),
+      });
+      completion = await readRemoteJson(completionResponse);
+      if (!completionResponse.ok) throw new Error(completion?.error ?? `Remote chat failed (${completionResponse.status})`);
+      if (!readChatAnswer(completion)) throw new Error("Remote chat returned an empty answer");
+    } catch (chatError) {
+      console.error("Remote chat failed; returning grounded fallback:", chatError);
+      const fallback = selectedMatches.slice(0, 3).map((match, index) =>
+        `[${index + 1}] ${String(match.content || "").replace(/\s+/g, " ").trim().slice(0, 900)}`,
+      ).filter(Boolean).join("\n\n");
+      return jsonResponse({
+        answer: fallback ? `Evidencia recuperada de los documentos:\n\n${fallback}` : noInformation,
+        sources,
+        retrievedChunks: selectedMatches.length,
+        model: "extractive-fallback",
+        warning: "El servicio de chat no estuvo disponible; se devolvió evidencia documental sin síntesis.",
+      });
+    }
 
     const candidateAnswer = cleanGeneratedAnswer(readChatAnswer(completion));
     const cleanedAnswer = globalQuestion
