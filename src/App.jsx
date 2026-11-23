@@ -360,7 +360,8 @@ export default function App() {
       const citations = (ragResult?.sources ?? [])
         .map((item) => {
           const pages = item.pages ? ` — página${String(item.pages).includes("-") ? "s" : ""} ${item.pages}` : "";
-          return item.score == null ? `- ${item.source}${pages}` : `- ${item.source}${pages} (${item.score})`;
+          const sourceLabel = item.candidate || String(item.source || "").replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ");
+          return item.score == null ? `- ${sourceLabel}${pages}` : `- ${sourceLabel}${pages} (${item.score})`;
         })
         .join("\n");
       const assistantText = citations

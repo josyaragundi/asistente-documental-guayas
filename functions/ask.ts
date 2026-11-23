@@ -412,7 +412,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     const sources = [...new Map(selectedMatches.map((match) => [
       match.source,
-      { source: match.source, score: Number(match.similarity.toFixed(4)), pages: pageCitation(selectedMatches.filter((item) => item.source === match.source)) },
+      { source: match.source, candidate: candidateLabel(match.source), score: Number(match.similarity.toFixed(4)), pages: pageCitation(selectedMatches.filter((item) => item.source === match.source)) },
     ])).values()];
 
     const groupedContext = globalQuestion
