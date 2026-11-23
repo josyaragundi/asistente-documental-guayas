@@ -4,6 +4,7 @@ import ChatMain from "./ChatMain.jsx";
 import AdminDocuments from "./AdminDocuments.jsx";
 import { insforge } from "./insforge.js";
 import Sidebar from "./Sidebar.jsx";
+import { extractPdfPages } from "./pdfIngestion.js";
 
 const MESSAGE_PAGE_SIZE = 50;
 
@@ -378,35 +379,26 @@ export default function App() {
       setUploadProgress({ current: index + 1, total: selectedFiles.length, fileName: file.name });
       setNotice(`Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
       try {
-        const metadataForm = new FormData();
-        metadataForm.append("file", file);
-        metadataForm.append("metadata", "true");
-        const { data: metadata, error: metadataError } = await insforge.functions.invoke("ingest-pdf", { body: metadataForm });
-        if (metadataError) throw metadataError;
-        const pages = Number(metadata?.pages) || 0;
-        const splitLargePdf = file.size > 2 * 1024 * 1024 && pages > 10;
-        const starts = splitLargePdf ? Array.from({ length: pages }, (_, part) => part) : [null];
+        const documentId = crypto.randomUUID();
         let chunks = 0;
-        for (const pageStart of starts) {
-          const formData = new FormData();
-          formData.append("file", file);
-          if (pageStart !== null) {
-            formData.append("pageStart", String(pageStart));
-          formData.append("pageCount", "1");
-          }
-          let partResult = null;
-          let uploadError = new Error("No se pudo iniciar el bloque");
-          for (let attempt = 0; attempt < 3 && uploadError; attempt += 1) {
-            const result = await insforge.functions.invoke("ingest-pdf", { body: formData });
-            partResult = result.data;
-            uploadError = result.error;
-            if (uploadError && attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500));
-          }
-          if (uploadError) throw uploadError;
-          chunks += Number(partResult?.chunksInserted) || 0;
-          setNotice(splitLargePdf
-            ? `Procesando ${file.name}: página ${Math.min(pageStart + 1, pages)} de ${pages}…`
-            : `Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
+        const pages = await extractPdfPages(file, {
+          onProgress: (pageNum, total) => setNotice(`Procesando ${file.name}: página ${pageNum} de ${total}…`),
+          onOcrPage: async (image, pageNum) => {
+            const ocrForm = new FormData();
+            ocrForm.append("file", image, `${file.name}-page-${pageNum}.jpg`);
+            const { data, error } = await insforge.functions.invoke("ocr-page", { body: ocrForm });
+            if (error) throw error;
+            return data?.text || "";
+          },
+        });
+        for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+          const page = pages[pageIndex];
+          const { data, error } = await insforge.functions.invoke("ingest-pdf", { body: {
+            document_id: documentId, source: file.name, text: page.text,
+            page_start: page.pageStart, page_end: page.pageEnd, chunk_index_offset: pageIndex,
+          } });
+          if (error) throw error;
+          chunks += Number(data?.chunksInserted) || 0;
         }
         completed.push(`${file.name} (${chunks} fragmentos)`);
       } catch (uploadError) {
