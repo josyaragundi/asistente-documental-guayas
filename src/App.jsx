@@ -451,6 +451,8 @@ export default function App() {
               const { data, error } = await insforge.functions.invoke("ocr-page", { body: ocrForm });
               if (!error) return data?.text || "";
               lastError = error;
+              const status = Number(error?.statusCode ?? error?.status ?? error?.code);
+              if (status === 401) await insforge.auth.getCurrentUser();
               if (attempt < 4) {
                 const retryNumber = attempt + 2;
                 setNotice(`Reintentando OCR de ${file.name}: página ${pageNum} (${retryNumber}/5)…`);
@@ -474,6 +476,8 @@ export default function App() {
               break;
             }
             lastError = error;
+            const status = Number(error?.statusCode ?? error?.status ?? error?.code);
+            if (status === 401) await insforge.auth.getCurrentUser();
             if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
           }
           if (lastError) throw lastError;
