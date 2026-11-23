@@ -30,6 +30,16 @@ export default async function ingestPdf(req: Request): Promise<Response> {
   const pageEnd = Number.isInteger(body.page_end) ? Number(body.page_end) : pageStart;
   const offset = Number.isInteger(body.chunk_index_offset) ? Number(body.chunk_index_offset) : 0;
   if (!text || !source || text.length > 80_000) return json({ error: "source and text are required (text max 80,000 chars)" }, 400, req);
+  const { data: existingRows, error: existingError } = await client.database
+    .from("documents")
+    .select("id")
+    .eq("document_id", documentId)
+    .eq("source", source)
+    .eq("page_start", pageStart)
+    .eq("page_end", pageEnd)
+    .limit(1);
+  if (existingError) return json({ error: existingError.message }, 502, req);
+  if (existingRows?.length) return json({ documentId, source, chunksInserted: 0, alreadyIndexed: true, pageStart, pageEnd, embeddingModel: "@cf/baai/bge-m3" }, 200, req);
   const words = text.split(/\s+/u).filter(Boolean);
   const chunks: string[] = [];
   for (let start = 0; start < words.length; start += 490) { chunks.push(words.slice(start, start + 560).join(" ")); if (start + 560 >= words.length) break; }

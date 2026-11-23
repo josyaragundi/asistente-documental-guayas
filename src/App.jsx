@@ -399,12 +399,21 @@ export default function App() {
         });
         for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
           const page = pages[pageIndex];
-          const { data, error } = await insforge.functions.invoke("ingest-pdf", { body: {
-            document_id: documentId, source: file.name, text: page.text,
-            page_start: page.pageStart, page_end: page.pageEnd, chunk_index_offset: pageIndex,
-          } });
-          if (error) throw error;
-          chunks += Number(data?.chunksInserted) || 0;
+          let lastError;
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            const { data, error } = await insforge.functions.invoke("ingest-pdf", { body: {
+              document_id: documentId, source: file.name, text: page.text,
+              page_start: page.pageStart, page_end: page.pageEnd, chunk_index_offset: pageIndex,
+            } });
+            if (!error) {
+              chunks += Number(data?.chunksInserted) || 0;
+              lastError = null;
+              break;
+            }
+            lastError = error;
+            if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+          }
+          if (lastError) throw lastError;
         }
         completed.push(`${file.name} (${chunks} fragmentos)`);
       } catch (uploadError) {
@@ -416,10 +425,13 @@ export default function App() {
           if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 5000));
           const { data: indexedRows } = await insforge.database
             .from("documents")
-            .select("id")
+            .select("page_start")
+            .eq("document_id", documentId)
             .eq("source", file.name)
-            .limit(1);
-          if (indexedRows?.length) {
+            .limit(10000);
+          const indexedPages = new Set((indexedRows ?? []).map((row) => Number(row.page_start)).filter(Number.isInteger));
+          const allPagesIndexed = pages.length > 0 && pages.every((page) => indexedPages.has(page.pageStart));
+          if (allPagesIndexed) {
             completed.push(`${file.name} (procesado en segundo plano)`);
             recovered = true;
           }
