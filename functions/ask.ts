@@ -470,6 +470,23 @@ export default async function ask(req: Request): Promise<Response> {
     if (groundingWarning.includes("se puede inferir") || groundingWarning.includes("se puede deducir") || groundingWarning.includes("no se encuentra explícitamente")) {
       answer = noInformation;
     }
+    if (globalQuestion && namedCandidateSources.length === 0 && sources.length >= 2 && answer !== noInformation && !answer.includes("|")) {
+      const bestBySource = new Map<string, typeof selectedMatches[number]>();
+      for (const match of selectedMatches) {
+        if (!bestBySource.has(match.source)) bestBySource.set(match.source, match);
+      }
+      const table = [
+        "| Candidato / Fuente | Dignidad | Eje o problema | Propuesta o evidencia | Página |",
+        "| --- | --- | --- | --- | --- |",
+        ...[...bestBySource.values()].map((match) => {
+          const source = match.source.replace(/\.pdf$/i, "");
+          const dignity = source.startsWith("Guayas__Prefectura") ? "Prefectura del Guayas" : source.startsWith("Guayaquil__Alcaldia") ? "Alcaldía de Guayaquil" : "Alcaldía de Durán";
+          const excerpt = String(match.content || "").replace(/\s+/g, " ").slice(0, 700).replaceAll("|", "¦");
+          return `| ${source.replaceAll("__", " — ")} | ${dignity} | Evidencia recuperada | ${excerpt} [${selectedMatches.indexOf(match) + 1}] | ${pageCitation([match]) ?? "—"} |`;
+        }),
+      ].join("\n");
+      answer = `${table}\n\nResumen: ${answer}`;
+    }
     const answerNormalized = answer.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const visibleSources = answer === noInformation
       ? []
