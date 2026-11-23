@@ -24,8 +24,51 @@ export default function App() {
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState("");
   const [view, setView] = useState(() => localStorage.getItem("chat-view") || "chat");
-  const [theme, setTheme] = useState(() => localStorage.getItem("chat-theme") || "light");
-  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("chat-theme", theme); }, [theme]);
+  const [theme, setTheme] = useState("light");
+  const [themeLoadedFor, setThemeLoadedFor] = useState(null);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!insforge || !user?.id) {
+      setTheme("light");
+      setThemeLoadedFor(null);
+      return () => { mounted = false; };
+    }
+    async function loadUserTheme() {
+      const { data, error } = await insforge.database
+        .from("user_preferences")
+        .select("theme")
+        .eq("user_id", user.id)
+        .limit(1);
+      if (!mounted) return;
+      if (!error) setTheme(data?.[0]?.theme === "dark" ? "dark" : "light");
+      setThemeLoadedFor(user.id);
+    }
+    loadUserTheme();
+    return () => { mounted = false; };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!insforge || !user?.id || themeLoadedFor !== user.id) return;
+    let cancelled = false;
+    async function saveUserTheme() {
+      const existing = await insforge.database
+        .from("user_preferences")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .limit(1);
+      if (cancelled || existing.error) return;
+      const result = existing.data?.length
+        ? await insforge.database.from("user_preferences").update({ theme, updated_at: new Date().toISOString() }).eq("user_id", user.id)
+        : await insforge.database.from("user_preferences").insert([{ user_id: user.id, theme }]);
+      if (result.error && !cancelled) setError(`No se pudo guardar el tema: ${result.error.message}`);
+    }
+    saveUserTheme();
+    return () => { cancelled = true; };
+  }, [theme, themeLoadedFor, user?.id]);
   useEffect(() => { localStorage.setItem("chat-view", view); }, [view]);
   useEffect(() => {
     if (activeId) localStorage.setItem("chat-active-id", activeId);
