@@ -24,7 +24,7 @@ export default function App() {
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState("");
   const [view, setView] = useState(() => localStorage.getItem("chat-view") || "chat");
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState("dark");
   const [themeLoadedFor, setThemeLoadedFor] = useState(null);
   const [themeReady, setThemeReady] = useState(false);
   useEffect(() => {
