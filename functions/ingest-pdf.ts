@@ -83,7 +83,13 @@ export default async function ingestPdf(req: Request): Promise<Response> {
       }
       embeddings.push(...batchEmbeddings);
     }
-    const rows = chunks.map((content, index) => ({ owner_id: userId, document_id: documentId, content, source, chunk_index: offset + index, embedding_model: "@cf/baai/bge-m3", embedding: embeddings[index], page_start: pageStart, page_end: pageEnd }));
+    // Cada página puede producir más de un chunk. Usar solo el índice de
+    // página provocaba colisiones en la siguiente página (por ejemplo, la
+    // página 49 podía crear los índices 48 y 49, y la 50 intentaba reutilizar
+    // el 49). Reservamos un rango amplio por página para mantener la clave
+    // única de cada documento durante reintentos y cargas largas.
+    const pageChunkBase = pageStart !== null ? pageStart * 1000 : offset * 1000;
+    const rows = chunks.map((content, index) => ({ owner_id: userId, document_id: documentId, content, source, chunk_index: pageChunkBase + index, embedding_model: "@cf/baai/bge-m3", embedding: embeddings[index], page_start: pageStart, page_end: pageEnd }));
     const { data, error } = await client.database.from("documents").insert(rows).select("id");
     if (error) throw error;
     return json({ documentId, source, chunksInserted: data?.length ?? rows.length, pageStart, pageEnd, embeddingModel: "@cf/baai/bge-m3" }, 201, req);
