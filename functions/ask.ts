@@ -93,7 +93,7 @@ export default async function ask(req: Request): Promise<Response> {
 
     const { data, error } = await client.database.rpc("match_documents", {
       query_embedding: queryEmbedding,
-      match_count: 20,
+      match_count: 10,
       match_threshold: 0.22,
     });
     if (error) throw error;
