@@ -37,7 +37,7 @@ curl -X POST "$RAG_FUNCTIONS_URL/ask" \
 Inference runs in a Cloudflare Worker at
 `https://chat-rag-ai.delgadoronald9.workers.dev`; no local model or GPU is used.
 The Worker uses `@cf/baai/bge-m3` for multilingual 1,024-dimensional vectors and
-`@cf/meta/llama-3.1-8b-instruct-fp8` for answers. Its service token is stored as
+`@cf/meta/llama-3.3-70b-instruct-fp8-fast` for answers. Its service token is stored as
 a Worker secret and as the InsForge secret `RAG_AI_TOKEN`; neither is exposed to
 the browser.
 

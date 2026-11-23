@@ -1,5 +1,5 @@
 const EMBED = "@cf/baai/bge-m3";
-const CHAT = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const CHAT = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { "Content-Type": "application/json; charset=utf-8" },
 });
