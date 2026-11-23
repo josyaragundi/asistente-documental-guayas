@@ -1,6 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MenuIcon, PlusIcon, SendIcon } from "./icons.jsx";
 
+function renderInlineMarkdown(value) {
+  const parts = String(value || "").split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
+  return parts.map((part, index) => {
+    const isBold = (part.startsWith("**") && part.endsWith("**")) || (part.startsWith("__") && part.endsWith("__"));
+    return isBold
+      ? <strong key={`bold-${index}`}>{part.slice(2, -2)}</strong>
+      : <span key={`text-${index}`}>{part}</span>;
+  });
+}
+
 function renderAssistantText(text) {
   const lines = String(text || "").split("\n");
   const blocks = [];
@@ -15,8 +25,8 @@ function renderAssistantText(text) {
     const body = rows.slice(1).filter((row) => row.some(Boolean));
     blocks.push(
       <div className="answer-table-wrap" key={`table-${blocks.length}`}>
-        <table className="answer-table"><thead><tr>{header.map((cell, index) => <th key={index}>{cell}</th>)}</tr></thead>
-          <tbody>{body.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, index) => <td key={index}>{cell}</td>)}</tr>)}</tbody>
+        <table className="answer-table"><thead><tr>{header.map((cell, index) => <th key={index}>{renderInlineMarkdown(cell)}</th>)}</tr></thead>
+          <tbody>{body.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, index) => <td key={index}>{renderInlineMarkdown(cell)}</td>)}</tr>)}</tbody>
         </table>
       </div>,
     );
@@ -27,7 +37,7 @@ function renderAssistantText(text) {
       table.push(line.trim());
     } else {
       flushTable();
-      if (line.trim()) blocks.push(<p key={`line-${blocks.length}`}>{line}</p>);
+      if (line.trim()) blocks.push(<p key={`line-${blocks.length}`}>{renderInlineMarkdown(line)}</p>);
     }
   }
   flushTable();
