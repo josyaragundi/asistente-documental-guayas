@@ -335,13 +335,14 @@ textarea {
 .thread::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 99px; }
 
 .empty {
-  min-height: 100%;
+  min-height: 0;
   height: auto;
   box-sizing: border-box;
   display: grid;
   place-items: center;
   color: var(--text);
   padding: 24px;
+  flex: 1 1 auto;
 }
 .chat-loading { width: 34px; height: 34px; margin: auto; border: 3px solid #d8e9e2; border-top-color: #10a37f; border-radius: 50%; animation: chat-spin .8s linear infinite; }
 @keyframes chat-spin { to { transform: rotate(360deg); } }
