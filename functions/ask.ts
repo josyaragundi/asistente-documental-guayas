@@ -165,6 +165,33 @@ export default async function ask(req: Request): Promise<Response> {
       [["melanie larreategui", "larreategui"], "Duran__Alcaldia__Melanie_Larreategui_Carranza.pdf"],
       [["rodrigo aparicio", "aparicio"], "Duran__Alcaldia__Rodrigo_Cesar_Aparicio_Arce.pdf"],
     ];
+    const candidateNames: Record<string, string> = {
+      "Guayas__Prefectura__PerezRoca.pdf": "César Pérez Roca",
+      "Guayas__Prefectura__Borbua.pdf": "Renan Aníbal Borbúa Espinel",
+      "Guayas__Prefectura__Cali.pdf": "Héctor Rolando Cali Macías",
+      "Guayas__Prefectura__GonzalezAlcivar.pdf": "Juan Carlos González Alcívar",
+      "Guayas__Prefectura__Guschmer.pdf": "Marcelo Guschmer",
+      "Guayas__Prefectura__Orbe.pdf": "Aníbal Orbe",
+      "Guayas__Prefectura__EspinReyes.pdf": "Espín Reyes",
+      "Guayas__Prefectura__Weber.pdf": "Weber",
+      "Guayaquil__Alcaldia__Monica_Luzarraga_Salazar.pdf": "Mónica Luzárraga Salazar",
+      "Guayaquil__Alcaldia__Cynthia_Viteri.pdf": "Cynthia Viteri",
+      "Guayaquil__Alcaldia__Hector_Baldeon.pdf": "Héctor Baldeón",
+      "Guayaquil__Alcaldia__Andres_Roche_Pesantes.pdf": "Andrés Roche Pesantes",
+      "Guayaquil__Alcaldia__Fiorella_Icaza_Saman.pdf": "Fiorella Icaza Samán",
+      "Guayaquil__Alcaldia__Susana_Santistevan.pdf": "Susana Santistevan",
+      "Guayaquil__Alcaldia__Antonio_Garcia.pdf": "Antonio García",
+      "Guayaquil__Alcaldia__Pedro_Medina.pdf": "Pedro Medina",
+      "Duran__Alcaldia__Pablo_Ayala.pdf": "Pablo Ayala",
+      "Duran__Alcaldia__Luis_Samaniego_Zuniga.pdf": "Luis Samaniego Zúñiga",
+      "Duran__Alcaldia__Leonardo_Garrido.pdf": "Leonardo Garrido",
+      "Duran__Alcaldia__Alex_Leon.pdf": "Alex León",
+      "Duran__Alcaldia__Monserrate_Granja.pdf": "Monserrate Granja",
+      "Duran__Alcaldia__Melanie_Larreategui_Carranza.pdf": "Melanie Larreátegui Carranza",
+      "Duran__Alcaldia__Rodrigo_Cesar_Aparicio_Arce.pdf": "Rodrigo César Aparicio Arce",
+      "Duran__Alcaldia__Maria_Isabel_Zambrano.pdf": "María Isabel Zambrano",
+    };
+    const candidateLabel = (source: string) => candidateNames[source] || source.replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ");
     const namedCandidateSources = [...new Set(
       candidateSources
         .filter(([aliases]) => aliases.some((alias) => normalizedQuestion.includes(alias)))
@@ -390,9 +417,9 @@ export default async function ask(req: Request): Promise<Response> {
 
     const groupedContext = globalQuestion
       ? [...new Map(selectedMatches.map((match) => [match.source, selectedMatches.filter((item) => item.source === match.source)])).values()]
-        .map((group) => group.map((match) => `Fuente: ${match.source}${pageCitation([match]) ? ` (páginas ${pageCitation([match])})` : ""}\n${String(match.content).slice(0, 650)}`).join("\n")).join("\n\n--- CANDIDATO / FUENTE ---\n\n")
+        .map((group) => group.map((match) => `Fuente: ${candidateLabel(match.source)} — ${match.source}${pageCitation([match]) ? ` (páginas ${pageCitation([match])})` : ""}\n${String(match.content).slice(0, 650)}`).join("\n")).join("\n\n--- CANDIDATO / FUENTE ---\n\n")
       : selectedMatches
-        .map((match) => `Fuente: ${match.source}${pageCitation([match]) ? ` (páginas ${pageCitation([match])})` : ""}\n${match.content}`)
+        .map((match) => `Fuente: ${candidateLabel(match.source)} — ${match.source}${pageCitation([match]) ? ` (páginas ${pageCitation([match])})` : ""}\n${match.content}`)
         .join("\n\n---\n\n");
     const context = groupedContext
       .split("\n\n--- CANDIDATO / FUENTE ---\n\n")
@@ -479,7 +506,7 @@ export default async function ask(req: Request): Promise<Response> {
         "| Candidato / Fuente | Dignidad | Eje o problema | Propuesta o evidencia | Página |",
         "| --- | --- | --- | --- | --- |",
         ...[...bestBySource.values()].map((match) => {
-          const source = match.source.replace(/\.pdf$/i, "");
+          const source = candidateLabel(match.source);
           const dignity = source.startsWith("Guayas__Prefectura") ? "Prefectura del Guayas" : source.startsWith("Guayaquil__Alcaldia") ? "Alcaldía de Guayaquil" : "Alcaldía de Durán";
           const excerpt = String(match.content || "").replace(/\s+/g, " ").slice(0, 700).replaceAll("|", "¦");
           return `| ${source.replaceAll("__", " — ")} | ${dignity} | Evidencia recuperada | ${excerpt} [${selectedMatches.indexOf(match) + 1}] | ${pageCitation([match]) ?? "—"} |`;
