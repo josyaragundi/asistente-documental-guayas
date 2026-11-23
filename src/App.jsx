@@ -18,7 +18,7 @@ export default function App() {
   const [prompt, setPrompt] = useState("");
   const [loadingChats, setLoadingChats] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: "" });
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: "", page: 0, pageTotal: 0 });
   const [isAdmin, setIsAdmin] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
@@ -28,6 +28,7 @@ export default function App() {
   const [themeLoadedFor, setThemeLoadedFor] = useState(null);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   useEffect(() => {
@@ -426,13 +427,16 @@ export default function App() {
     const failed = [];
     for (let index = 0; index < selectedFiles.length; index += 1) {
       const file = selectedFiles[index];
-      setUploadProgress({ current: index + 1, total: selectedFiles.length, fileName: file.name });
+      setUploadProgress({ current: index + 1, total: selectedFiles.length, fileName: file.name, page: 0, pageTotal: 0 });
       setNotice(`Procesando documento ${index + 1} de ${selectedFiles.length}: ${file.name}…`);
       try {
         const documentId = crypto.randomUUID();
         let chunks = 0;
         const pages = await extractPdfPages(file, {
-          onProgress: (pageNum, total) => setNotice(`Procesando ${file.name}: página ${pageNum} de ${total}…`),
+          onProgress: (pageNum, total) => {
+            setUploadProgress((progress) => ({ ...progress, page: pageNum, pageTotal: total }));
+            setNotice(`Procesando ${file.name}: página ${pageNum} de ${total}…`);
+          },
           onOcrPage: async (image, pageNum) => {
             const ocrForm = new FormData();
             ocrForm.append("file", image, `${file.name}-page-${pageNum}.jpg`);

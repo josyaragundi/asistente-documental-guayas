@@ -20,10 +20,10 @@ export default function AdminDocuments({ documents, uploading, uploadProgress, n
           {uploading && uploadProgress.total > 0 && (
             <div className="upload-progress" role="status" aria-live="polite">
               <div className="upload-progress-heading">
-                <span>Procesando {uploadProgress.current} de {uploadProgress.total}</span>
-                <strong>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</strong>
+                <span>Documento {uploadProgress.current} de {uploadProgress.total}</span>
+                <strong>{uploadProgress.pageTotal ? `${uploadProgress.page} / ${uploadProgress.pageTotal} páginas` : "Preparando…"}</strong>
               </div>
-              <div className="upload-progress-track"><div className="upload-progress-bar" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} /></div>
+              <div className="upload-progress-track"><div className="upload-progress-bar" style={{ width: `${uploadProgress.pageTotal ? Math.max(1, (uploadProgress.page / uploadProgress.pageTotal) * 100) : 2}%` }} /></div>
               <small>{uploadProgress.fileName}</small>
             </div>
           )}
