@@ -447,13 +447,14 @@ export default function App() {
             const ocrForm = new FormData();
             ocrForm.append("file", image, `${file.name}-page-${pageNum}.jpg`);
             let lastError;
-            for (let attempt = 0; attempt < 3; attempt += 1) {
+            for (let attempt = 0; attempt < 5; attempt += 1) {
               const { data, error } = await insforge.functions.invoke("ocr-page", { body: ocrForm });
               if (!error) return data?.text || "";
               lastError = error;
-              if (attempt < 2) {
-                setNotice(`Reintentando OCR de ${file.name}: página ${pageNum} (${attempt + 2}/3)…`);
-                await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+              if (attempt < 4) {
+                const retryNumber = attempt + 2;
+                setNotice(`Reintentando OCR de ${file.name}: página ${pageNum} (${retryNumber}/5)…`);
+                await new Promise((resolve) => setTimeout(resolve, 4000 * retryNumber));
               }
             }
             throw lastError || new Error(`No se pudo leer la página ${pageNum} con OCR`);
