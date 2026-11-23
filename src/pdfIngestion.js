@@ -29,6 +29,10 @@ export async function extractPdfPages(file, { onProgress, onOcrPage, onPageText 
   const pages = [];
   try {
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+      // Publica el avance antes de procesar la página y cede un frame al
+      // navegador para que la UI pinte 1/33, 2/33, etc. en tiempo real.
+      await onProgress?.(pageNum, pdf.numPages);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       const page = await pdf.getPage(pageNum);
       try {
         let text = nativeText((await page.getTextContent()).items);
@@ -40,7 +44,6 @@ export async function extractPdfPages(file, { onProgress, onOcrPage, onPageText 
         }
         if (text.trim()) pages.push({ pageStart: pageNum, pageEnd: pageNum, text: text.trim(), method });
         onPageText?.({ pageNum, pages: pdf.numPages, text, method });
-        onProgress?.(pageNum, pdf.numPages);
       } finally {
         if (typeof page.cleanup === "function") page.cleanup();
       }
