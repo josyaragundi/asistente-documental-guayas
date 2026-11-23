@@ -26,18 +26,23 @@ export default function App() {
   const [view, setView] = useState(() => localStorage.getItem("chat-view") || "chat");
   const [theme, setTheme] = useState("light");
   const [themeLoadedFor, setThemeLoadedFor] = useState(null);
+  const [themeReady, setThemeReady] = useState(false);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
-  }, [theme]);
+    if (themeReady) document.documentElement.classList.remove("theme-loading");
+  }, [theme, themeReady]);
 
   useEffect(() => {
     let mounted = true;
     if (!insforge || !user?.id) {
       setTheme("light");
       setThemeLoadedFor(null);
+      setThemeReady(true);
       return () => { mounted = false; };
     }
+    setThemeReady(false);
+    document.documentElement.classList.add("theme-loading");
     async function loadUserTheme() {
       const { data, error } = await insforge.database
         .from("user_preferences")
@@ -47,6 +52,7 @@ export default function App() {
       if (!mounted) return;
       if (!error) setTheme(data?.[0]?.theme === "dark" ? "dark" : "light");
       setThemeLoadedFor(user.id);
+      setThemeReady(true);
     }
     loadUserTheme();
     return () => { mounted = false; };
@@ -522,7 +528,7 @@ export default function App() {
     setPrompt("");
   }
 
-  if (authLoading) {
+  if (authLoading || (user && !themeReady)) {
     return <main className="auth-screen" aria-busy="true" />;
   }
   if (!user) return <AuthScreen onAuthenticated={setUser} />;
