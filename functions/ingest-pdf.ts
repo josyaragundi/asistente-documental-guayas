@@ -46,10 +46,42 @@ export default async function ingestPdf(req: Request): Promise<Response> {
   try {
     const embeddings: number[][] = [];
     for (let start = 0; start < chunks.length; start += 5) {
-      const response = await fetch(aiUrl, { method: "POST", headers: { Authorization: `Bearer ${aiToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ task: "embed", input: chunks.slice(start, start + 5), model: "@cf/baai/bge-m3" }) });
-      const result = await response.json();
-      if (!response.ok || !Array.isArray(result.embeddings)) throw new Error(result?.error || `Embedding failed (${response.status})`);
-      embeddings.push(...result.embeddings);
+      const batch = chunks.slice(start, start + 5);
+      let batchEmbeddings: number[][] | null = null;
+      let lastEmbeddingError = "Embedding failed";
+      for (let attempt = 0; attempt < 3 && !batchEmbeddings; attempt += 1) {
+        try {
+          const response = await fetch(aiUrl, { method: "POST", headers: { Authorization: `Bearer ${aiToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ task: "embed", input: batch, model: "@cf/baai/bge-m3" }) });
+          const result = await response.json();
+          if (!response.ok || !Array.isArray(result.embeddings) || result.embeddings.length !== batch.length) throw new Error(result?.error || `Embedding failed (${response.status})`);
+          batchEmbeddings = result.embeddings;
+        } catch (error) {
+          lastEmbeddingError = error instanceof Error ? error.message : "Embedding failed";
+          if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+        }
+      }
+      if (!batchEmbeddings) {
+        // Algunos lotes fallan en el proveedor por carga/transitorio. Reintenta
+        // cada fragmento individual para no perder toda la página.
+        batchEmbeddings = [];
+        for (const chunk of batch) {
+          let single: number[] | null = null;
+          for (let attempt = 0; attempt < 3 && !single; attempt += 1) {
+            try {
+              const response = await fetch(aiUrl, { method: "POST", headers: { Authorization: `Bearer ${aiToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ task: "embed", input: [chunk], model: "@cf/baai/bge-m3" }) });
+              const result = await response.json();
+              if (!response.ok || !Array.isArray(result.embeddings?.[0])) throw new Error(result?.error || `Embedding failed (${response.status})`);
+              single = result.embeddings[0];
+            } catch (error) {
+              lastEmbeddingError = error instanceof Error ? error.message : lastEmbeddingError;
+              if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+            }
+          }
+          if (!single) throw new Error(lastEmbeddingError);
+          batchEmbeddings.push(single);
+        }
+      }
+      embeddings.push(...batchEmbeddings);
     }
     const rows = chunks.map((content, index) => ({ owner_id: userId, document_id: documentId, content, source, chunk_index: offset + index, embedding_model: "@cf/baai/bge-m3", embedding: embeddings[index], page_start: pageStart, page_end: pageEnd }));
     const { data, error } = await client.database.from("documents").insert(rows).select("id");
