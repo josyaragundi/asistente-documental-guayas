@@ -546,8 +546,8 @@ export default function App() {
         open={sidebarOpen}
         user={user}
         isAdmin={isAdmin}
-        onNewChat={() => { setView("chat"); createChat(); }}
-        onSelectChat={(id) => { setView("chat"); selectChat(id); }}
+        onNewChat={() => { setNotice(""); setError(""); setView("chat"); createChat(); }}
+        onSelectChat={(id) => { setNotice(""); setError(""); setView("chat"); selectChat(id); }}
         theme={theme}
         onToggleTheme={() => setTheme((current) => current === "light" ? "dark" : "light")}
         onClose={() => setSidebarOpen(false)}
@@ -567,7 +567,7 @@ export default function App() {
         deletingDocument={deletingDocument}
         onUploadPdf={uploadPdf}
         onDeleteDocument={deleteDocument}
-        onBack={() => setView("chat")}
+        onBack={() => { setNotice(""); setError(""); setView("chat"); }}
       /> : <ChatMain
         chat={activeChat}
         prompt={prompt}

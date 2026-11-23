@@ -528,6 +528,8 @@ textarea {
 .delete-document { border: 1px solid #6a3f3f; border-radius: 8px; padding: 6px 9px; background: transparent; color: #ffaaaa; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .delete-document:hover { background: #542f2f; }
 .delete-document:disabled { opacity: .6; cursor: wait; }
+:root:not([data-theme="dark"]) .delete-document { border-color: #d8a5a5; color: #a33c3c; background: #fff; }
+:root:not([data-theme="dark"]) .delete-document:hover { background: #fff1f1; border-color: #b85b5b; }
 .documents-empty { color: var(--muted); font-size: 13px; }
 
 .admin-page { overflow: auto; }
