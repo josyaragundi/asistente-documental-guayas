@@ -116,6 +116,9 @@ textarea {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   border-right: 1px solid #000;
 }
 
@@ -171,7 +174,8 @@ textarea {
 }
 
 .chat-list {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 4px 8px 16px;
 }
@@ -203,8 +207,11 @@ textarea {
 
 .sidebar-bottom {
   position: relative;
+  flex: 0 0 auto;
+  z-index: 2;
   padding: 10px;
   border-top: 1px solid #2a2a2a;
+  background: var(--sidebar);
 }
 
 .profile-menu {
