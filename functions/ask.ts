@@ -60,6 +60,7 @@ function readChatAnswer(payload: any): string {
 function cleanGeneratedAnswer(value: string): string {
   const cleaned = value
     .replace(/(\[\d+\])(?:\s*\1)+/g, "$1")
+    .replace(/(\[\d+\])\s+[\wÁÉÍÓÚÜÑáéíóúüñ.-]+(?:__[\wÁÉÍÓÚÜÑáéíóúüñ.-]+)+\.pdf(?:\s*\([^)]*\))?/g, "$1")
     .split("\n")
     .filter((line) => !/^\s*Fuentes?:\s*/i.test(line))
     .join("\n")
