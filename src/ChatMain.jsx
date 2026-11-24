@@ -228,6 +228,10 @@ export default function ChatMain({
             <div className="welcome-copy">
               <span>Hola, {displayName}</span>
               <small>¿Qué te gustaría consultar hoy?</small>
+              <p className="welcome-hint">
+                Para obtener mejores resultados, menciona el candidato y el tema. Puedes preguntar por una propuesta,
+                comparar candidatos o indicar un artículo y una página.
+              </p>
             </div>
           </div>
         ) : (

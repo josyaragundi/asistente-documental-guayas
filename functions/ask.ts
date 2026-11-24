@@ -68,7 +68,10 @@ function cleanGeneratedAnswer(value: string): string {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  return cleaned || value.trim() || noInformation;
+  // En tablas, la columna Página debe contener solo el número o rango; las
+  // citas [n] pertenecen a la columna Propuesta y no deben duplicarse allí.
+  const normalizedTablePages = cleaned.replace(/\|\s*\[\d+\]\s+(\d+(?:\s*[-–]\s*\d+)?)\s*\|/g, "| $1 |");
+  return normalizedTablePages || value.trim() || noInformation;
 }
 
 async function readRemoteJson(response: Response): Promise<any> {
@@ -151,6 +154,14 @@ export default async function ask(req: Request): Promise<Response> {
     // cifras que pueden quedar mal representados por un OCR o una pregunta
     // formulada con términos exactos del documento.
     const normalizedQuestion = question.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    // InsForge puede devolver la misma fuente con diferencias de separadores
+    // (por ejemplo, dobles guiones bajos frente a guiones bajos simples).
+    // Las comparaciones de candidatos deben basarse en una clave estable.
+    const sourceKey = (value: unknown) => String(value || "")
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "");
     const candidateSources: Array<[string[], string]> = [
       [["perez roca", "perezroca", "perez", "roca"], "Guayas__Prefectura__PerezRoca.pdf"],
       [["maria isabel zambrano", "maria isabel", "zambrano"], "Duran__Alcaldia__Maria_Isabel_Zambrano.pdf"],
@@ -221,7 +232,8 @@ export default async function ask(req: Request): Promise<Response> {
       const listedSources = [...new Set((documentRows ?? []).map((row) => String(row.source || "")).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, "es"));
       const configuredSources = [...new Set(candidateSources.map(([, source]) => source))];
-      const missingSources = configuredSources.filter((source) => !listedSources.includes(source));
+      const listedSourceKeys = new Set(listedSources.map(sourceKey));
+      const missingSources = configuredSources.filter((source) => !listedSourceKeys.has(sourceKey(source)));
       const answer = listedSources
         .map((source, index) => `${index + 1}. ${source.replace(/\.pdf$/i, "").replaceAll("__", " — ").replaceAll("_", " ")}`)
         .join("\n");
@@ -234,15 +246,17 @@ export default async function ask(req: Request): Promise<Response> {
     }
 
     const candidateSource = namedCandidateSources.length === 1 ? namedCandidateSources[0] : null;
+    let resolvedNamedSources = namedCandidateSources;
     if (namedCandidateSources.length > 1) {
+      // Resuelve la variante exacta almacenada en InsForge antes de filtrar.
       const { data: namedRows, error: namedRowsError } = await client.database
         .from("documents")
         .select("source")
-        .in("source", namedCandidateSources)
-        .limit(namedCandidateSources.length);
+        .limit(5000);
       if (namedRowsError) throw namedRowsError;
-      const indexedNamedSources = new Set((namedRows ?? []).map((row) => String(row.source || "")));
-      const missingNamedSources = namedCandidateSources.filter((source) => !indexedNamedSources.has(source));
+      const actualSources = [...new Set((namedRows ?? []).map((row) => String(row.source || "")).filter(Boolean))];
+      const resolved = namedCandidateSources.map((wanted) => actualSources.find((actual) => sourceKey(actual) === sourceKey(wanted)) || wanted);
+      const missingNamedSources = namedCandidateSources.filter((wanted, index) => resolved[index] === wanted && !actualSources.some((actual) => sourceKey(actual) === sourceKey(wanted)));
       if (missingNamedSources.length) {
         return jsonResponse({
           answer: `${noInformation}\n\nNo se puede comparar todavía porque estas fuentes no están indexadas: ${missingNamedSources.join(", ")}.`,
@@ -251,12 +265,13 @@ export default async function ask(req: Request): Promise<Response> {
           model: "extractive-comparison",
         });
       }
+      resolvedNamedSources = resolved;
     }
     if (namedCandidateSources.length > 1) {
-      const allowedSources = new Set(namedCandidateSources);
-      matches = matches.filter((match) => allowedSources.has(match.source));
+      const allowedSources = new Set(resolvedNamedSources.map(sourceKey));
+      matches = matches.filter((match) => allowedSources.has(sourceKey(match.source)));
     } else if (candidateSource) {
-      matches = matches.filter((match) => match.source === candidateSource);
+      matches = matches.filter((match) => sourceKey(match.source) === sourceKey(candidateSource));
     }
 
     const globalQuestion = /\b(todo|todos|todas|cada|compar|diferencia|diferencias|propuestas|candidatos|candidatas|en general|global|movilidad|seguridad|agua potable|desarrollo)\b/i.test(normalizedQuestion);
@@ -303,8 +318,8 @@ export default async function ask(req: Request): Promise<Response> {
     // Fallback de comparación: filtra primero por los términos relevantes de la
     // pregunta y solo recurre a los primeros chunks si no hay coincidencia léxica.
     if (namedCandidateSources.length > 1) {
-      for (const source of namedCandidateSources) {
-        if (matches.some((match) => match.source === source)) continue;
+      for (const source of resolvedNamedSources) {
+        if (matches.some((match) => sourceKey(match.source) === sourceKey(source))) continue;
         let candidateRows: Array<{
           id: string;
           content: string;
@@ -343,8 +358,8 @@ export default async function ask(req: Request): Promise<Response> {
 
       // Equilibra la recuperación: cada candidato nombrado aporta hasta cinco
       // fragmentos, aunque el top global del vector favorezca a otro candidato.
-      const balancedMatches = await Promise.all(namedCandidateSources.map(async (source) => {
-        const current = matches.filter((match) => match.source === source);
+      const balancedMatches = await Promise.all(resolvedNamedSources.map(async (source) => {
+        const current = matches.filter((match) => sourceKey(match.source) === sourceKey(source));
         const { data: sourceRows, error: sourceError } = await client.database
           .from("documents")
           .select("id, content, source, chunk_index, page_start, page_end")
@@ -370,6 +385,34 @@ export default async function ask(req: Request): Promise<Response> {
         .limit(8);
       if (candidateError) throw candidateError;
       matches = (candidateRows ?? []).map((row) => ({ ...row, similarity: 0.3 }));
+    }
+
+    // En consultas globales, garantiza cobertura equilibrada por fuente. El
+    // ranking vectorial suele concentrar los resultados en pocos candidatos;
+    // por eso añadimos el mejor fragmento temático disponible de cada plan.
+    if (globalQuestion && namedCandidateSources.length === 0 && terms.length > 0) {
+      const { data: globalRows, error: globalRowsError } = await client.database
+        .from("documents")
+        .select("id, content, source, chunk_index, page_start, page_end")
+        .limit(5000);
+      if (globalRowsError) throw globalRowsError;
+      const normalizedTerms = terms.map((term) => term.toLocaleLowerCase("es"));
+      const scoreRow = (row: { content: string }) => {
+        const content = String(row.content || "").toLocaleLowerCase("es");
+        return normalizedTerms.reduce((score, term) => score + (content.includes(term) ? 1 : 0), 0);
+      };
+      const bestBySource = new Map<string, any>();
+      for (const row of globalRows ?? []) {
+        const score = scoreRow(row);
+        if (score === 0) continue;
+        const current = bestBySource.get(sourceKey(row.source));
+        if (!current || score > current.termScore) {
+          bestBySource.set(sourceKey(row.source), { ...row, similarity: Math.max(0.3, score / Math.max(terms.length, 1)), termScore: score });
+        }
+      }
+      for (const row of bestBySource.values()) {
+        if (!matches.some((match) => match.id === row.id)) matches.push(row);
+      }
     }
 
     const selectedMatches = matches
@@ -441,7 +484,7 @@ export default async function ask(req: Request): Promise<Response> {
       "8. Cuando la consulta solicite propuestas, ejes, programas, planes de trabajo o una comparación de candidatos, responde con mayor detalle y estructura. Comienza con un párrafo introductorio breve de una o dos líneas que identifique al candidato, su organización política si aparece en CONTEXTO y la dignidad a la que postula.",
       "9. Después organiza la respuesta en viñetas claras con este formato: - **Nombre del eje o programa:** descripción concreta. Incluye todos los proyectos específicos, acciones, enfoques de implementación, metas al 2031, plazos como agendas de 100 días y cifras o indicadores que aparezcan textualmente en los fragmentos recuperados.",
       "10. Coloca la cita correspondiente al final de cada viñeta o afirmación relevante. No dupliques marcadores, no inventes cifras ni propuestas y no añadas líneas manuales de Fuente:. Si el contexto no detalla un dato solicitado, indícalo brevemente al final.",
-      "11. Cuando la consulta mencione o compare dos o más candidatos, organiza principalmente la respuesta en una tabla Markdown GFM con exactamente las columnas: | Candidato | Propuesta | Página |. Incluye una fila por propuesta y usa el nombre completo real del candidato. No incluyas nombres técnicos de archivos, dignidades, organizaciones o encabezados como PLAN DE TRABAJO 2027-2031 en la columna Candidato. Si falta evidencia de un candidato, no inventes una fila. Debajo añade dos o tres viñetas breves con las principales diferencias o coincidencias.",
+      "11. Cuando la consulta mencione o compare dos o más candidatos, organiza principalmente la respuesta en una tabla Markdown GFM con exactamente las columnas: | Candidato | Propuesta | Página |. Incluye una fila por propuesta y usa el nombre completo real del candidato. No incluyas nombres técnicos de archivos, dignidades, organizaciones o encabezados como PLAN DE TRABAJO 2027-2031 en la columna Candidato. Coloca la cita [n] al final de la celda Propuesta; la celda Página debe contener únicamente el número o rango de páginas, sin [n]. Si falta evidencia de un candidato, no inventes una fila. Debajo añade dos o tres viñetas breves con las principales diferencias o coincidencias.",
       "12. En consultas globales o transversales que involucren varios planes aunque no se mencionen candidatos por nombre, presenta primero una tabla Markdown con exactamente estas columnas: | Candidato | Propuesta | Página |. En Candidato escribe únicamente el nombre completo real; nunca uses el nombre técnico del archivo, la dignidad ni el texto 'PLAN DE TRABAJO 2027-2031'. En Propuesta resume solo la evidencia recuperada y conserva la cita [n]. Usa una fila por candidato y propuesta con evidencia. Después añade un resumen breve de coincidencias y diferencias.",
       "Formato según intención:",
       "- Consulta de un solo candidato o dato puntual: responde de forma directa, técnica y concisa, indicando candidato/fuente, hallazgo y páginas.",

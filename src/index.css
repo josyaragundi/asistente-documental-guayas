@@ -381,6 +381,15 @@ textarea {
   font-weight: 400;
 }
 
+.welcome-hint {
+  max-width: 560px;
+  margin: 2px auto 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  text-wrap: balance;
+}
+
 .message {
   width: min(768px, calc(100% - 32px));
   margin: 0 auto 22px;
